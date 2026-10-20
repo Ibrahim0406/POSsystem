@@ -22,7 +22,7 @@ import java.util.Collections;
 public class SecurityConfig {
 
     @Bean
-    public HttpSecurity securityFilterChain(HttpSecurity http)
+    public SecurityFilterChain securityFilterChain(HttpSecurity http)
             throws Exception {
 
         return http
