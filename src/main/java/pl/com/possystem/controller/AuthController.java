@@ -22,13 +22,13 @@ public class AuthController {
 
 
     @PostMapping("/signup")
-    public ResponseEntity<AuthResponse> signupHandler(@RequestBody UserDto userDto) throws Exception, UserException {
+    public ResponseEntity<AuthResponse> signupHandler(@RequestBody UserDto userDto) throws UserException {
             return ResponseEntity.ok(authService.signup(userDto));
     }
 
 
     @PostMapping("/signin")
-    public ResponseEntity<AuthResponse> loginHandler(@RequestBody UserDto userDto) throws Exception, UserException {
+    public ResponseEntity<AuthResponse> loginHandler(@RequestBody UserDto userDto) throws UserException {
         return ResponseEntity.ok(authService.login(userDto));
     }
 }

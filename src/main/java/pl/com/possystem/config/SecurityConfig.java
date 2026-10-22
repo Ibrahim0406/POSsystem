@@ -59,7 +59,7 @@ public class SecurityConfig {
                 corsConfiguration.setAllowedMethods(Collections.singletonList("*"));
                 corsConfiguration.setAllowCredentials(true);
                 corsConfiguration.setAllowedHeaders(Collections.singletonList("*"));
-                corsConfiguration.setExposedHeaders(Collections.singletonList("*"));
+                corsConfiguration.setExposedHeaders(Arrays.asList("Authorization"));
                 corsConfiguration.setMaxAge(3600L);
                 return corsConfiguration;
             }
