@@ -24,7 +24,7 @@ import java.util.Collections;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JWTValidator jwtValidator) throws Exception {
 
         return http
                 .sessionManagement(managment ->
@@ -34,7 +34,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/super-admin/**")
                         .hasRole("ADMIN")
                         .anyRequest().permitAll()
-                ).addFilterBefore(new JWTValidator(), BasicAuthenticationFilter.class)
+                ).addFilterBefore(jwtValidator, BasicAuthenticationFilter.class)
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource())
                 ).build();

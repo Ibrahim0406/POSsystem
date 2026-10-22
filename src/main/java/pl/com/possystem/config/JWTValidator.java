@@ -9,18 +9,27 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.io.IOException;
 import java.util.List;
 
+@Component
 public class JWTValidator extends OncePerRequestFilter {
+
+    private final SecretKey key;
+
+    public JWTValidator(@Value("${jwt.secret}") String jwtSecret) {
+        this.key = Keys.hmacShaKeyFor(jwtSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
 
     @Override
     protected void doFilterInternal(
@@ -33,7 +42,6 @@ public class JWTValidator extends OncePerRequestFilter {
         if (jwt != null) {
             try {
                 jwt = jwt.substring(7);
-                SecretKey key = Keys.hmacShaKeyFor(JwtConstant.JWT_SECRET.getBytes());
                 Claims claims = Jwts.parser()
                         .verifyWith(key)
                         .build()
