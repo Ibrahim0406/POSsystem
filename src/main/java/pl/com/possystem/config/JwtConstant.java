@@ -2,7 +2,5 @@ package pl.com.possystem.config;
 
 public class JwtConstant {
 
-    public static final String JWT_SECRET = "fajksfjnakjsfnakjfnenoianvnoiengqačgmsčekgm-sgeklnsgočssg,.mgirgeshegonsgneoigosinsodnoein";
-
     public static final String JWT_HEADER = "Authorization";
 }
