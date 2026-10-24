@@ -2,10 +2,18 @@ package pl.com.possystem.entity;
 
 
 import jakarta.persistence.*;
+import lombok.*;
+import pl.com.possystem.domain.StoreStatus;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Entity
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
 @Table(name = "products")
 public class Product {
 
@@ -14,66 +22,39 @@ public class Product {
     private Long id;
 
     @Column(nullable = false, unique = true)
-    private String barcode;
+    private String sku;
 
     @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal price;
-
     @Column(nullable = false)
-    private Integer stockQuantity;
+    private Double mrp;
 
-    // Konstruktori
-    public Product() {
+    private String description;
+
+    private Double sellingPrice;
+
+    private String brand;
+
+    private String imageUrl;
+
+    //private Category category;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Store store;
+
+
+    private LocalDateTime createdAt;
+
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate(){
+        this.createdAt = LocalDateTime.now();
     }
 
-    public Product(String barcode, String name, BigDecimal price, Integer stockQuantity) {
-        this.barcode = barcode;
-        this.name = name;
-        this.price = price;
-        this.stockQuantity = stockQuantity;
-    }
-
-    // Getteri i Setteri
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getBarcode() {
-        return barcode;
-    }
-
-    public void setBarcode(String barcode) {
-        this.barcode = barcode;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public BigDecimal getPrice() {
-        return price;
-    }
-
-    public void setPrice(BigDecimal price) {
-        this.price = price;
-    }
-
-    public Integer getStockQuantity() {
-        return stockQuantity;
-    }
-
-    public void setStockQuantity(Integer stockQuantity) {
-        this.stockQuantity = stockQuantity;
+    @PreUpdate
+    protected void onUpdate(){
+        this.updatedAt = LocalDateTime.now();
     }
 }
