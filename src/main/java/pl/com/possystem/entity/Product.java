@@ -38,7 +38,8 @@ public class Product {
 
     private String imageUrl;
 
-    //private Category category;
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Category category;
 
     @ManyToOne(fetch = FetchType.LAZY)
     private Store store;
