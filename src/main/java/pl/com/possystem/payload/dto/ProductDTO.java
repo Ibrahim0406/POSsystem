@@ -32,7 +32,7 @@ public class ProductDTO {
 
     private String imageUrl;
 
-    //private Category category;
+    private CategoryDTO category;
 
     private Long categoryId;
 
