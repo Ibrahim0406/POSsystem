@@ -31,6 +31,9 @@ public class User {
     @ManyToOne(fetch = FetchType.LAZY)
     private Store store;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Branch branch;
+
     private String phone;
 
     @Column(nullable = false)
