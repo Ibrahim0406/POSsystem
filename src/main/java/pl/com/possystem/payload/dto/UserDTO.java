@@ -6,7 +6,7 @@ import pl.com.possystem.domain.UserRole;
 import java.time.LocalDateTime;
 
 @Data
-public class UserDto {
+public class UserDTO {
 
     private Long id;
 

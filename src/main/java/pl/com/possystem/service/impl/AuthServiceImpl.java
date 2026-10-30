@@ -13,7 +13,7 @@ import pl.com.possystem.domain.UserRole;
 import pl.com.possystem.entity.User;
 import pl.com.possystem.exception.UserException;
 import pl.com.possystem.mapper.UserMapper;
-import pl.com.possystem.payload.dto.UserDto;
+import pl.com.possystem.payload.dto.UserDTO;
 import pl.com.possystem.payload.response.AuthResponse;
 import pl.com.possystem.repository.UserRepository;
 import pl.com.possystem.service.AuthService;
@@ -36,7 +36,7 @@ public class AuthServiceImpl implements AuthService {
 
 
     @Override
-    public AuthResponse signup(UserDto userDto) throws UserException {
+    public AuthResponse signup(UserDTO userDto) throws UserException {
         User user = userRepository.findByEmail(userDto.getEmail());
         if (user != null) {
             throw new UserException("User with this email already exists");
@@ -72,7 +72,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public AuthResponse login(UserDto userDto) throws UserException {
+    public AuthResponse login(UserDTO userDto) throws UserException {
         String email = userDto.getEmail();
         String password = userDto.getPassword();
         

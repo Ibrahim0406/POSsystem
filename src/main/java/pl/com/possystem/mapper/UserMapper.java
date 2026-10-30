@@ -2,14 +2,14 @@ package pl.com.possystem.mapper;
 
 
 import pl.com.possystem.entity.User;
-import pl.com.possystem.payload.dto.UserDto;
+import pl.com.possystem.payload.dto.UserDTO;
 
 public class UserMapper {
 
 
-    public static UserDto toDTO(User savedUser) {
+    public static UserDTO toDTO(User savedUser) {
 
-        UserDto userDto = new UserDto();
+        UserDTO userDto = new UserDTO();
         userDto.setId(savedUser.getId());
         userDto.setFullName(savedUser.getFullName());
         userDto.setEmail(savedUser.getEmail());
@@ -24,7 +24,7 @@ public class UserMapper {
         return userDto;
     }
 
-    public static User toEntity(UserDto userDto) {
+    public static User toEntity(UserDTO userDto) {
         User user = new User();
         user.setFullName(userDto.getFullName());
         user.setEmail(userDto.getEmail());

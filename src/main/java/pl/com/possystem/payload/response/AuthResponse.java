@@ -2,7 +2,7 @@ package pl.com.possystem.payload.response;
 
 
 import lombok.Data;
-import pl.com.possystem.payload.dto.UserDto;
+import pl.com.possystem.payload.dto.UserDTO;
 
 @Data
 public class AuthResponse {
@@ -11,5 +11,5 @@ public class AuthResponse {
 
     private String message;
 
-    private UserDto user;
+    private UserDTO user;
 }

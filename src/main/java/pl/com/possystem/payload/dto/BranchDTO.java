@@ -1,12 +1,9 @@
 package pl.com.possystem.payload.dto;
 
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import pl.com.possystem.entity.Store;
-import pl.com.possystem.entity.User;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -40,9 +37,9 @@ public class BranchDTO {
 
     private LocalDateTime updatedAt;
 
-    private StoreDto store;
+    private StoreDTO store;
 
     private Long storeId;
 
-    private UserDto manager;
+    private UserDTO manager;
 }
