@@ -8,7 +8,7 @@ import pl.com.possystem.entity.Branch;
 import pl.com.possystem.entity.Store;
 import pl.com.possystem.entity.User;
 import pl.com.possystem.mapper.UserMapper;
-import pl.com.possystem.payload.dto.UserDto;
+import pl.com.possystem.payload.dto.UserDTO;
 import pl.com.possystem.repository.BranchRepository;
 import pl.com.possystem.repository.StoreRepository;
 import pl.com.possystem.repository.UserRepository;
@@ -29,7 +29,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final PasswordEncoder passwordEncoder;
 
     @Override
-    public UserDto createStoreEmployee(UserDto employee, Long storeId) throws Exception {
+    public UserDTO createStoreEmployee(UserDTO employee, Long storeId) throws Exception {
         Store store = storeRepository.findById(storeId).orElseThrow(() -> new Exception("Store not found"));
 
         Branch branch = null;
@@ -56,7 +56,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
-    public UserDto createBranchEmployee(UserDto employee, Long branchId) throws Exception {
+    public UserDTO createBranchEmployee(UserDTO employee, Long branchId) throws Exception {
 
         Branch branch = branchRepository.findById(branchId).orElseThrow(() -> new Exception("Branch not found"));
 
@@ -73,7 +73,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
-    public User updateEmployee(Long employeeId, UserDto employeeDetails) throws Exception {
+    public User updateEmployee(Long employeeId, UserDTO employeeDetails) throws Exception {
 
         User existingEmployee = userRepository.findById(employeeId).orElseThrow(() -> new Exception("Employee not found"));
 
@@ -97,7 +97,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
-    public List<UserDto> findStoreEmployees(Long storeId, UserRole userrole) throws Exception {
+    public List<UserDTO> findStoreEmployees(Long storeId, UserRole userrole) throws Exception {
         Store store = storeRepository.findById(storeId).orElseThrow(() -> new Exception("Store not found"));
 
         return userRepository.findByStore(store).stream()
@@ -108,7 +108,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
-    public List<UserDto> findBranchEmployees(Long branchId, UserRole userrole) throws Exception {
+    public List<UserDTO> findBranchEmployees(Long branchId, UserRole userrole) throws Exception {
         Branch branch = branchRepository.findById(branchId).orElseThrow(() -> new Exception("Branch not found"));
 
         return userRepository.findByBranchId(branchId).stream()

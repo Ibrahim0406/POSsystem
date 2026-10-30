@@ -1,22 +1,20 @@
 package pl.com.possystem.payload.dto;
 
-import jakarta.persistence.*;
 import lombok.Data;
 import pl.com.possystem.domain.StoreStatus;
 import pl.com.possystem.entity.StoreContact;
-import pl.com.possystem.entity.User;
 
 import java.time.LocalDateTime;
 
 @Data
-public class StoreDto {
+public class StoreDTO {
 
 
     private Long id;
 
     private String brand;
 
-    private UserDto storeAdmin;
+    private UserDTO storeAdmin;
 
     private LocalDateTime createdAt;
 

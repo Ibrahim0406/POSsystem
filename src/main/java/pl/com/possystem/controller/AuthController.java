@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import pl.com.possystem.exception.UserException;
-import pl.com.possystem.payload.dto.UserDto;
+import pl.com.possystem.payload.dto.UserDTO;
 import pl.com.possystem.payload.response.AuthResponse;
 import pl.com.possystem.service.AuthService;
 
@@ -22,13 +22,13 @@ public class AuthController {
 
 
     @PostMapping("/signup")
-    public ResponseEntity<AuthResponse> signupHandler(@RequestBody UserDto userDto) throws UserException {
+    public ResponseEntity<AuthResponse> signupHandler(@RequestBody UserDTO userDto) throws UserException {
             return ResponseEntity.ok(authService.signup(userDto));
     }
 
 
     @PostMapping("/signin")
-    public ResponseEntity<AuthResponse> loginHandler(@RequestBody UserDto userDto) throws UserException {
+    public ResponseEntity<AuthResponse> loginHandler(@RequestBody UserDTO userDto) throws UserException {
         return ResponseEntity.ok(authService.login(userDto));
     }
 }

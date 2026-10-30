@@ -5,26 +5,26 @@ import pl.com.possystem.domain.StoreStatus;
 import pl.com.possystem.entity.Store;
 import pl.com.possystem.entity.User;
 import pl.com.possystem.exception.UserException;
-import pl.com.possystem.payload.dto.StoreDto;
+import pl.com.possystem.payload.dto.StoreDTO;
 
 import java.util.List;
 
 public interface StoreService {
 
-    StoreDto createStore(StoreDto storeDto, User user);
+    StoreDTO createStore(StoreDTO storeDto, User user);
 
-    StoreDto getStoreById(Long id) throws Exception;
+    StoreDTO getStoreById(Long id) throws Exception;
 
-    List<StoreDto> getAllStores();
+    List<StoreDTO> getAllStores();
 
     Store getStoreByAdmin() throws UserException;
 
-    StoreDto updateStore(Long id, StoreDto storeDto) throws UserException;
+    StoreDTO updateStore(Long id, StoreDTO storeDto) throws UserException;
 
     void deleteStore(Long id) throws UserException;
 
-    StoreDto getStoreByEmployee() throws UserException;
+    StoreDTO getStoreByEmployee() throws UserException;
 
-    StoreDto moderateStore(Long id, StoreStatus status) throws UserException;
+    StoreDTO moderateStore(Long id, StoreStatus status) throws UserException;
 
 }

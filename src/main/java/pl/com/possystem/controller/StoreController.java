@@ -8,7 +8,7 @@ import pl.com.possystem.domain.StoreStatus;
 import pl.com.possystem.entity.User;
 import pl.com.possystem.exception.UserException;
 import pl.com.possystem.mapper.StoreMapper;
-import pl.com.possystem.payload.dto.StoreDto;
+import pl.com.possystem.payload.dto.StoreDTO;
 import pl.com.possystem.payload.response.ApiResponse;
 import pl.com.possystem.service.StoreService;
 import pl.com.possystem.service.UserService;
@@ -25,7 +25,7 @@ public class StoreController {
     private final UserService userService;
 
     @PostMapping("/create")
-    public ResponseEntity<StoreDto> createStore(@RequestBody StoreDto storeDto, @RequestHeader ("Authorization") String jwt)
+    public ResponseEntity<StoreDTO> createStore(@RequestBody StoreDTO storeDto, @RequestHeader ("Authorization") String jwt)
             throws UserException {
         User user = userService.getUserFromJwt(jwt);
         return ResponseEntity.ok(storeService.createStore(storeDto, user));
@@ -33,29 +33,29 @@ public class StoreController {
 
 
     @GetMapping("/{id}")
-    public ResponseEntity<StoreDto> getStoreById(@PathVariable Long id, @RequestHeader ("Authorization") String jwt)
+    public ResponseEntity<StoreDTO> getStoreById(@PathVariable Long id, @RequestHeader ("Authorization") String jwt)
             throws Exception {
         return ResponseEntity.ok(storeService.getStoreById(id));
     }
 
     @GetMapping
-    public ResponseEntity<List<StoreDto>> getAllStores(@RequestHeader ("Authorization") String jwt) throws Exception {
+    public ResponseEntity<List<StoreDTO>> getAllStores(@RequestHeader ("Authorization") String jwt) throws Exception {
         return ResponseEntity.ok(storeService.getAllStores());
     }
 
     @GetMapping("/admin")
-    public ResponseEntity<StoreDto> getStoreByAdmin(@RequestHeader ("Authorization") String jwt) throws Exception {
+    public ResponseEntity<StoreDTO> getStoreByAdmin(@RequestHeader ("Authorization") String jwt) throws Exception {
         return ResponseEntity.ok(StoreMapper.toDTO(storeService.getStoreByAdmin()));
     }
 
     @GetMapping("/employee")
-    public ResponseEntity<StoreDto> getStoreByEmployee(@RequestHeader ("Authorization") String jwt) throws Exception {
+    public ResponseEntity<StoreDTO> getStoreByEmployee(@RequestHeader ("Authorization") String jwt) throws Exception {
             return ResponseEntity.ok(storeService.getStoreByEmployee());
     }
 
     @PutMapping("/update/{id}")
-    public ResponseEntity<StoreDto> updateStore(@PathVariable Long id,
-                                                @RequestBody StoreDto storeDto,
+    public ResponseEntity<StoreDTO> updateStore(@PathVariable Long id,
+                                                @RequestBody StoreDTO storeDto,
                                                 @RequestHeader ("Authorization") String jwt) throws UserException {
         return ResponseEntity.ok(storeService.updateStore(id, storeDto));
     }
@@ -70,10 +70,10 @@ public class StoreController {
 
 
     @PutMapping("/moderate/{id}")
-    public ResponseEntity<StoreDto> moderateStore(@PathVariable Long id,
-                                                    @RequestParam StoreStatus status,
-                                                    @RequestHeader ("Authorization") String jwt) throws UserException {
-        StoreDto storeDto = storeService.moderateStore(id, status);
+    public ResponseEntity<StoreDTO> moderateStore(@PathVariable Long id,
+                                                  @RequestParam StoreStatus status,
+                                                  @RequestHeader ("Authorization") String jwt) throws UserException {
+        StoreDTO storeDto = storeService.moderateStore(id, status);
         return ResponseEntity.ok(storeDto);
     }
 
