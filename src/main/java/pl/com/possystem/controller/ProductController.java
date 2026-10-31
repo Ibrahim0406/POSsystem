@@ -3,7 +3,7 @@ package pl.com.possystem.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import pl.com.possystem.entity.Product;
+
 import pl.com.possystem.entity.User;
 import pl.com.possystem.payload.dto.ProductDTO;
 import pl.com.possystem.payload.response.ApiResponse;
@@ -11,10 +11,9 @@ import pl.com.possystem.repository.ProductRepository;
 import pl.com.possystem.service.ProductService;
 import pl.com.possystem.service.UserService;
 
-import java.util.Collections;
 import java.util.List;
 
-import static org.springframework.data.jpa.domain.AbstractPersistable_.id;
+
 
 @RestController
 @RequiredArgsConstructor
