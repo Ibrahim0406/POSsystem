@@ -1,11 +1,10 @@
 package pl.com.possystem.payload.dto;
 
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import pl.com.possystem.entity.Store;
+
 
 import java.time.LocalDateTime;
 
