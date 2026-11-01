@@ -2,6 +2,7 @@ package pl.com.possystem.controller;
 
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pl.com.possystem.payload.dto.RefundDTO;
@@ -51,11 +52,11 @@ public class RefundController {
 
     @GetMapping("/cashier/{cashierId}/date-range")
     public ResponseEntity<List<RefundDTO>> getRefundByCashierAndDateRange(@PathVariable Long cashierId,
-                                                                          @RequestParam String startDate,
-                                                                          @RequestParam String endDate) throws Exception {
+                                                                          @RequestParam  @DateTimeFormat (iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+                                                                          @RequestParam @DateTimeFormat (iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) throws Exception {
         List<RefundDTO> refunds = refundService.getRefundIdByCashierAndDateRange(cashierId,
-                LocalDateTime.parse(startDate),
-                LocalDateTime.parse(endDate));
+                startDate,
+                endDate);
         return ResponseEntity.ok(refunds);
     }
 
