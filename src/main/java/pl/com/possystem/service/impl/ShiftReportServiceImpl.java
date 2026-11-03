@@ -136,7 +136,7 @@ public class ShiftReportServiceImpl implements ShiftReportService {
                 .findByCashierAndCreatedAtBetween(user, shiftReport.getShiftStart(), now);
 
         List<Refund> refunds = refundRepository.findByCashierIdAndCreatedAtBetween(
-                user.getId() ,shiftReport.getShiftStart(), shiftReport.getShiftEnd()
+                user.getId() ,shiftReport.getShiftStart(), now
         );
 
         double totalRefunds = refunds.stream().mapToDouble(refund -> refund.getAmount() != null? refund.getAmount() : 0.0).sum();
