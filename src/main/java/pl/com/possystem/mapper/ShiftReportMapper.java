@@ -27,7 +27,7 @@ public static ShiftReportDTO toDTO(ShiftReport shiftReport){
             .totalOrders(shiftReport.getTotalOrders())
             .cashier(UserMapper.toDTO(shiftReport.getCashier()))
             .cashierId(shiftReport.getCashier() != null ? shiftReport.getCashier().getId() : null)
-            .branch(BranchMapper.toDTO(shiftReport.getBranch()))
+            .branch(shiftReport.getBranch() != null ? BranchMapper.toDTO(shiftReport.getBranch()) : null)
             .branchId(shiftReport.getBranch() != null ? shiftReport.getBranch().getId() : null)
             .recentOrders(mapOrders(shiftReport.getRecentOrders()))
             .topSellingProducts(mapProducts(shiftReport.getTopSellingProducts()))

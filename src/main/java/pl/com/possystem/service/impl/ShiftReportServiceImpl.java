@@ -32,6 +32,11 @@ public class ShiftReportServiceImpl implements ShiftReportService {
     public ShiftReportDTO startShift() throws Exception {
 
         User currentUser = userService.getCurrentUser();
+        Branch branch = currentUser.getBranch();
+        if (branch == null) {
+            throw new Exception("The current user is not assigned to a branch and cannot start a shift");
+        }
+
         LocalDateTime shiftStart = LocalDateTime.now();
         LocalDateTime startOfDay =shiftStart.withHour(0).withMinute(0).withSecond(0);
         LocalDateTime endOfDay = shiftStart.withHour(23).withMinute(59).withSecond(59);
@@ -41,8 +46,6 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         if (exsisting.isPresent()) {
             throw new Exception("Shift already started for today");
         }
-
-        Branch branch = currentUser.getBranch();
 
         ShiftReport shiftReport = ShiftReport.builder()
                 .cashier(currentUser)
@@ -71,8 +74,8 @@ public class ShiftReportServiceImpl implements ShiftReportService {
 
         double totalRefunds = refunds.stream().mapToDouble(refund -> refund.getAmount() != null? refund.getAmount() : 0.0).sum();
 
-        List<Order> orders = orderRepository.findByBranchIdAndCreatedAtBetween(
-                user.getId(), shiftReport.getShiftStart(), shiftReport.getShiftEnd()
+        List<Order> orders = orderRepository.findByCashierAndCreatedAtBetween(
+                user, shiftReport.getShiftStart(), shiftReport.getShiftEnd()
         );
 
         double totalSales = orders.stream().mapToDouble(Order::getTotalAmount).sum();
