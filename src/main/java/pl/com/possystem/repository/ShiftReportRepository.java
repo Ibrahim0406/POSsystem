@@ -8,6 +8,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import pl.com.possystem.domain.UserRole;
+
 public interface ShiftReportRepository extends JpaRepository<ShiftReport, Long> {
 
     List<ShiftReport> findByCashierId(Long id);
@@ -19,4 +23,13 @@ public interface ShiftReportRepository extends JpaRepository<ShiftReport, Long> 
     Optional<ShiftReport> findByCashierAndShiftStartBetween(User cashier, LocalDateTime startOfDay, LocalDateTime endOfDay);
 
 
+    @Query("SELECT sr FROM ShiftReport sr " +
+            "WHERE sr.branch.id = :branchId " +
+            "AND sr.cashier.role = :cashierRole " +
+            "AND sr.shiftEnd IS NULL " +
+            "ORDER BY sr.shiftStart DESC")
+    List<ShiftReport> findActiveCashierShiftsByBranch(
+            @Param("branchId") Long branchId,
+            @Param("cashierRole") UserRole cashierRole);
+    
 }
