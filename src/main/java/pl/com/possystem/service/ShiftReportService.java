@@ -24,6 +24,6 @@ public interface ShiftReportService {
 
     ShiftReportDTO getShiftByCashierAndDate(Long cashierId, LocalDateTime date) throws Exception;
 
-
+    List<ShiftReportDTO> getCurrentBranchActiveShiftProgress() throws Exception;
 
 }

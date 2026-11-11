@@ -39,6 +39,11 @@ public class ShiftReportController {
 
     }
 
+    @GetMapping("/branch/current/active")
+    public ResponseEntity<List<ShiftReportDTO>> getCurrentBranchActiveShifts() throws Exception {
+        return ResponseEntity.ok(shiftReportService.getCurrentBranchActiveShiftProgress());
+    }
+
     @GetMapping("/cashier/{cashierId}/date/{date}")
     public ResponseEntity<ShiftReportDTO> getShiftReportByDate(@PathVariable Long cashierId,
                                                                @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDateTime startDate) throws Exception {

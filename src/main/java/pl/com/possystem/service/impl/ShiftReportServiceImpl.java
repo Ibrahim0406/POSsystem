@@ -2,7 +2,8 @@ package pl.com.possystem.service.impl;
 
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.cglib.core.Local;
+import org.springframework.security.access.AccessDeniedException;
+import pl.com.possystem.domain.UserRole;
 import org.springframework.stereotype.Service;
 import pl.com.possystem.domain.PaymentType;
 import pl.com.possystem.entity.*;
@@ -127,44 +128,13 @@ public class ShiftReportServiceImpl implements ShiftReportService {
     @Override
     public ShiftReportDTO getCurrentShiftProgress(Long cashierId) throws Exception {
 
-        User user = userService.getCurrentUser();
+        User cashier = userService.getCurrentUser();
 
         ShiftReport shiftReport = shiftReportRepository
-                .findTopByCashierAndShiftEndIsNullOrderByShiftStartDesc(user)
+                .findTopByCashierAndShiftEndIsNullOrderByShiftStartDesc(cashier)
                 .orElseThrow(() -> new Exception("No active shift found for the cashier"));
 
-        LocalDateTime now = LocalDateTime.now();
-
-        List<Order> orders = orderRepository
-                .findByCashierAndCreatedAtBetween(user, shiftReport.getShiftStart(), now);
-
-        List<Refund> refunds = refundRepository.findByCashierIdAndCreatedAtBetween(
-                user.getId() ,shiftReport.getShiftStart(), now
-        );
-
-        double totalRefunds = refunds.stream().mapToDouble(refund -> refund.getAmount() != null? refund.getAmount() : 0.0).sum();
-
-
-        double totalSales = orders.stream().mapToDouble(Order::getTotalAmount).sum();
-
-        double totalOrders = orders.size();
-
-        double netSales = totalSales - totalRefunds;
-
-
-        shiftReport.setTotalRefunds(totalRefunds);
-        shiftReport.setTotalSales(totalSales);
-        shiftReport.setTotalOrders(totalOrders);
-        shiftReport.setNetSales(netSales);
-        shiftReport.setRecentOrders(getRecentOrders(orders));
-        shiftReport.setTopSellingProducts(getTopSellingProducts(orders));
-        shiftReport.setPaymentSummaries(getPaymentSummaries(orders, totalSales));
-        shiftReport.setRefunds(refunds);
-
-
-        ShiftReport savedShiftReport = shiftReportRepository.save(shiftReport);
-
-        return ShiftReportMapper.toDTO(savedShiftReport);
+        return buildActiveShiftProgress(shiftReport);
     }
 
     @Override
@@ -179,6 +149,26 @@ public class ShiftReportServiceImpl implements ShiftReportService {
                 .orElseThrow(() -> new Exception("No shift report found for the given cashier and date"));
 
         return ShiftReportMapper.toDTO(report);
+    }
+
+    @Override
+    public List<ShiftReportDTO> getCurrentBranchActiveShiftProgress() throws Exception {
+        User manager = userService.getCurrentUser();
+
+        if (manager.getRole() != UserRole.ROLE_BRANCH_MANAGER) {
+            throw new AccessDeniedException("Only branch managers can view branch shifts");
+        }
+
+        Branch branch = manager.getBranch();
+        if (branch == null) {
+            throw new Exception("The current manager is not assigned to a branch");
+        }
+
+        return shiftReportRepository
+                .findActiveCashierShiftsByBranch(branch.getId(), UserRole.ROLE_BRANCH_CASHIER)
+                .stream()
+                .map(this::buildActiveShiftProgress)
+                .collect(Collectors.toList());
     }
 
 
@@ -228,5 +218,32 @@ public class ShiftReportServiceImpl implements ShiftReportService {
                     .sorted(Comparator.comparing(Order::getCreatedAt).reversed())
                     .limit(5)
                     .collect(Collectors.toList());
+    }
+
+    private ShiftReportDTO buildActiveShiftProgress(ShiftReport shiftReport) {
+        User cashier = shiftReport.getCashier();
+        LocalDateTime now = LocalDateTime.now();
+
+        List<Order> orders = orderRepository.findByCashierAndCreatedAtBetween(
+                cashier, shiftReport.getShiftStart(), now);
+
+        List<Refund> refunds = refundRepository.findByCashierIdAndCreatedAtBetween(
+                cashier.getId(), shiftReport.getShiftStart(), now);
+
+        double totalRefunds = refunds.stream()
+                .mapToDouble(refund -> refund.getAmount() != null ? refund.getAmount() : 0.0)
+                .sum();
+        double totalSales = orders.stream().mapToDouble(Order::getTotalAmount).sum();
+
+        shiftReport.setTotalRefunds(totalRefunds);
+        shiftReport.setTotalSales(totalSales);
+        shiftReport.setTotalOrders((double) orders.size());
+        shiftReport.setNetSales(totalSales - totalRefunds);
+        shiftReport.setRecentOrders(getRecentOrders(orders));
+        shiftReport.setTopSellingProducts(getTopSellingProducts(orders));
+        shiftReport.setPaymentSummaries(getPaymentSummaries(orders, totalSales));
+        shiftReport.setRefunds(refunds);
+
+        return ShiftReportMapper.toDTO(shiftReportRepository.save(shiftReport));
     }
 }
