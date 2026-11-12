@@ -10,6 +10,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import pl.com.possystem.config.JWTProvider;
 import pl.com.possystem.domain.UserRole;
+import pl.com.possystem.domain.AccountStatus;
 import pl.com.possystem.entity.User;
 import pl.com.possystem.exception.UserException;
 import pl.com.possystem.mapper.UserMapper;
@@ -46,6 +47,7 @@ public class AuthServiceImpl implements AuthService {
         newUser.setEmail(userDto.getEmail());
         newUser.setPassword(passwordEncoder.encode(userDto.getPassword()));
         newUser.setRole(UserRole.ROLE_BRANCH_CASHIER);
+        newUser.setStatus(AccountStatus.ACTIVE);
         newUser.setPhone(userDto.getPhone());
         newUser.setLastLogin(LocalDateTime.now());
         newUser.setCreatedAt(LocalDateTime.now());
@@ -102,6 +104,10 @@ public class AuthServiceImpl implements AuthService {
         if (userDetails == null) {
 
             throw new UserException("User not found with email: " + email);
+        }
+
+        if (!userDetails.isEnabled()) {
+            throw new UserException("This account is disabled");
         }
 
         if( !passwordEncoder.matches(password, userDetails.getPassword())) {

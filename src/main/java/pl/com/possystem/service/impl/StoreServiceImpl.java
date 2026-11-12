@@ -7,10 +7,12 @@ import pl.com.possystem.domain.UserRole;
 import pl.com.possystem.entity.Store;
 import pl.com.possystem.entity.StoreContact;
 import pl.com.possystem.entity.User;
+import pl.com.possystem.entity.AdminAuditLog;
 import pl.com.possystem.exception.UserException;
 import pl.com.possystem.mapper.StoreMapper;
 import pl.com.possystem.payload.dto.StoreDTO;
 import pl.com.possystem.repository.StoreRepository;
+import pl.com.possystem.repository.AdminAuditLogRepository;
 import pl.com.possystem.service.StoreService;
 import pl.com.possystem.service.UserService;
 
@@ -23,6 +25,8 @@ import java.util.stream.Collectors;
 public class StoreServiceImpl implements StoreService {
 
     private final StoreRepository storeRepository;
+
+    private final AdminAuditLogRepository auditLogRepository;
 
     private final UserService userService;
 
@@ -110,9 +114,18 @@ public class StoreServiceImpl implements StoreService {
         }
 
         Store store = storeRepository.findById(id).orElseThrow(() -> new UserException("Store not found with id: " + id));
+        StoreStatus previousStatus = store.getStatus();
         store.setStatus(status);
 
         Store updatedStore = storeRepository.save(store);
+        auditLogRepository.save(AdminAuditLog.builder()
+                .actorId(currentUser.getId())
+                .actorEmail(currentUser.getEmail())
+                .action("STORE_STATUS_UPDATED")
+                .resourceType("STORE")
+                .resourceId(id.toString())
+                .details("status: " + previousStatus + " -> " + status)
+                .build());
         return StoreMapper.toDTO(updatedStore);
     }
 }

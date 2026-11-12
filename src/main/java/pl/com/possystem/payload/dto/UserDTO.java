@@ -1,6 +1,7 @@
 package pl.com.possystem.payload.dto;
 
 import lombok.Data;
+import pl.com.possystem.domain.AccountStatus;
 import pl.com.possystem.domain.UserRole;
 
 import java.time.LocalDateTime;
@@ -17,6 +18,8 @@ public class UserDTO {
     private String phone;
 
     private UserRole role;
+
+    private AccountStatus status;
 
     private String password;
 

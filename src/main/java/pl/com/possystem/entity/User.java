@@ -4,6 +4,7 @@ package pl.com.possystem.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import pl.com.possystem.domain.AccountStatus;
 import pl.com.possystem.domain.UserRole;
 
 import java.time.LocalDateTime;
@@ -41,6 +42,9 @@ public class User {
 
     @Column(nullable = false)
     private String password;
+
+    @Enumerated(EnumType.STRING)
+    private AccountStatus status = AccountStatus.ACTIVE;
 
     private LocalDateTime createdAt;
 
