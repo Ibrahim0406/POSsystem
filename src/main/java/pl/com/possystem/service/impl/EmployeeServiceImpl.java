@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import pl.com.possystem.domain.UserRole;
+import pl.com.possystem.domain.AccountStatus;
 import pl.com.possystem.entity.Branch;
 import pl.com.possystem.entity.Store;
 import pl.com.possystem.entity.User;
@@ -63,6 +64,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         User user = UserMapper.toEntity(employee);
         user.setStore(store);
         user.setBranch(branch);
+        user.setStatus(AccountStatus.ACTIVE);
         user.setPassword(passwordEncoder.encode(employee.getPassword()));
 
         User savedEmployee = userRepository.save(user);
@@ -97,6 +99,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         User user = UserMapper.toEntity(employee);
         user.setStore(branch.getStore());
         user.setBranch(branch);
+        user.setStatus(AccountStatus.ACTIVE);
         user.setPassword(passwordEncoder.encode(employee.getPassword()));
 
         User savedEmployee = userRepository.save(user);

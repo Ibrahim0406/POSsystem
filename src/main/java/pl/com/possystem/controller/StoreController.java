@@ -73,8 +73,7 @@ public class StoreController {
     public ResponseEntity<StoreDTO> moderateStore(@PathVariable Long id,
                                                   @RequestParam StoreStatus status,
                                                   @RequestHeader ("Authorization") String jwt) throws UserException {
-        StoreDTO storeDto = storeService.moderateStore(id, status);
-        return ResponseEntity.ok(storeDto);
+        return ResponseEntity.ok(storeService.moderateStore(id, status));
     }
 
 

@@ -8,6 +8,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import pl.com.possystem.entity.User;
+import pl.com.possystem.domain.AccountStatus;
 import pl.com.possystem.repository.UserRepository;
 
 import java.util.ArrayList;
@@ -36,7 +37,15 @@ public class CustomUserImplementation implements UserDetailsService {
 
         Collection<GrantedAuthority> authorities = Collections.singletonList(authority);
 
-        return new org.springframework.security.core.userdetails.User(user.getEmail(), user.getPassword(), authorities);
+        return new org.springframework.security.core.userdetails.User(
+                user.getEmail(),
+                user.getPassword(),
+                user.getStatus() != AccountStatus.DISABLED,
+                true,
+                true,
+                true,
+                authorities
+        );
 
     }
 }
