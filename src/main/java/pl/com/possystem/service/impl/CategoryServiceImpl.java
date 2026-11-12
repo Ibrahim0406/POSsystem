@@ -15,6 +15,7 @@ import pl.com.possystem.service.CategoryService;
 import pl.com.possystem.service.UserService;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -76,11 +77,14 @@ public class CategoryServiceImpl implements CategoryService {
 
 
     private void checkAuthority(User user, Store store) throws Exception {
-        boolean isAdmin = user.getRole().equals(UserRole.ROLE_STORE_ADMIN);
-        boolean isManager = user.getRole().equals(UserRole.ROLE_STORE_MANAGER);
-        boolean isSameStore = user.equals(store.getStoreAdmin());
+        boolean isStoreAdmin = user.getRole() == UserRole.ROLE_STORE_ADMIN
+                && store.getStoreAdmin() != null
+                && Objects.equals(user.getId(), store.getStoreAdmin().getId());
+        boolean isStoreManager = user.getRole() == UserRole.ROLE_STORE_MANAGER
+                && user.getStore() != null
+                && Objects.equals(user.getStore().getId(), store.getId());
 
-        if (!(isAdmin && isSameStore) && !isManager){
+        if (!isStoreAdmin && !isStoreManager) {
             throw new Exception("You don't have permission to perform this action");
         }
     }

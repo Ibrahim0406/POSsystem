@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pl.com.possystem.domain.UserRole;
-import pl.com.possystem.entity.User;
 import pl.com.possystem.payload.dto.UserDTO;
 import pl.com.possystem.payload.response.ApiResponse;
 import pl.com.possystem.service.EmployeeService;
@@ -37,9 +36,9 @@ public class EmployeeController {
 
 
     @PutMapping("/update/{id}")
-    public ResponseEntity<User> updateEmployee(@PathVariable Long id,@RequestBody UserDTO userDto) throws Exception {
+    public ResponseEntity<UserDTO> updateEmployee(@PathVariable Long id,@RequestBody UserDTO userDto) throws Exception {
 
-        User employee = employeeService.updateEmployee(id, userDto);
+        UserDTO employee = employeeService.updateEmployee(id, userDto);
 
         return ResponseEntity.ok(employee);
     }
@@ -74,5 +73,4 @@ public class EmployeeController {
 
 
 }
-
 
