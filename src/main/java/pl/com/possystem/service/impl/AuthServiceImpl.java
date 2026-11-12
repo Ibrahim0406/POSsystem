@@ -41,15 +41,11 @@ public class AuthServiceImpl implements AuthService {
         if (user != null) {
             throw new UserException("User with this email already exists");
         }
-        if (userDto.getRole().equals(UserRole.ROLE_STORE_ADMIN)) {
-            throw new UserException("You cannot create an admin user");
-        }
-
         User newUser = new User();
         newUser.setFullName(userDto.getFullName());
         newUser.setEmail(userDto.getEmail());
         newUser.setPassword(passwordEncoder.encode(userDto.getPassword()));
-        newUser.setRole(userDto.getRole());
+        newUser.setRole(UserRole.ROLE_BRANCH_CASHIER);
         newUser.setPhone(userDto.getPhone());
         newUser.setLastLogin(LocalDateTime.now());
         newUser.setCreatedAt(LocalDateTime.now());

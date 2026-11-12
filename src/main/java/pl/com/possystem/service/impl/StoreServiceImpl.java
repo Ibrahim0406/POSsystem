@@ -3,6 +3,7 @@ package pl.com.possystem.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import pl.com.possystem.domain.StoreStatus;
+import pl.com.possystem.domain.UserRole;
 import pl.com.possystem.entity.Store;
 import pl.com.possystem.entity.StoreContact;
 import pl.com.possystem.entity.User;
@@ -103,6 +104,11 @@ public class StoreServiceImpl implements StoreService {
 
     @Override
     public StoreDTO moderateStore(Long id, StoreStatus status) throws UserException {
+        User currentUser = userService.getCurrentUser();
+        if (currentUser.getRole() != UserRole.ROLE_ADMIN) {
+            throw new UserException("Only a system admin can moderate stores");
+        }
+
         Store store = storeRepository.findById(id).orElseThrow(() -> new UserException("Store not found with id: " + id));
         store.setStatus(status);
 

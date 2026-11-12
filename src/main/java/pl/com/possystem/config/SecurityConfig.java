@@ -29,10 +29,10 @@ public class SecurityConfig {
         return http
                 .sessionManagement(managment ->
                         managment.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth ->
-                        auth.requestMatchers("/api/**").authenticated()
+                .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/super-admin/**")
                         .hasRole("ADMIN")
+                        .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll()
                 ).addFilterBefore(jwtValidator, BasicAuthenticationFilter.class)
                 .csrf(AbstractHttpConfigurer::disable)
