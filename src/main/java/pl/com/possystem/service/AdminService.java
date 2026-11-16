@@ -14,6 +14,7 @@ public interface AdminService {
     AdminStoreDTO getStore(Long storeId) throws Exception;
     AdminStoreDTO updateStoreStatus(Long storeId, StoreStatus status) throws Exception;
     List<AdminUserDTO> getUsers(String query, UserRole role, AccountStatus status, Long storeId, Long branchId);
+    AdminUserDTO createUser(AdminUserCreateDTO request) throws Exception;
     AdminUserDTO getUser(Long userId) throws Exception;
     AdminUserDTO updateUserRole(Long userId, UserRole role) throws Exception;
     AdminUserDTO updateUserStatus(Long userId, AccountStatus status) throws Exception;
