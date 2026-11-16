@@ -13,6 +13,8 @@ import pl.com.possystem.repository.*;
 import pl.com.possystem.service.ShiftReportService;
 import pl.com.possystem.service.UserService;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -73,17 +75,23 @@ public class ShiftReportServiceImpl implements ShiftReportService {
                 user.getId() ,shiftReport.getShiftStart(), shiftReport.getShiftEnd()
         );
 
-        double totalRefunds = refunds.stream().mapToDouble(refund -> refund.getAmount() != null? refund.getAmount() : 0.0).sum();
+        BigDecimal totalRefunds = refunds.stream()
+                .map(Refund::getAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         List<Order> orders = orderRepository.findByCashierAndCreatedAtBetween(
                 user, shiftReport.getShiftStart(), shiftReport.getShiftEnd()
         );
 
-        double totalSales = orders.stream().mapToDouble(Order::getTotalAmount).sum();
+        BigDecimal totalSales = orders.stream()
+                .map(Order::getTotalAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         double totalOrders = orders.size();
 
-        double netSales = totalSales - totalRefunds;
+        BigDecimal netSales = totalSales.subtract(totalRefunds);
 
 
         shiftReport.setTotalRefunds(totalRefunds);
@@ -172,7 +180,7 @@ public class ShiftReportServiceImpl implements ShiftReportService {
     }
 
 
-    private List<PaymentSummary> getPaymentSummaries(List<Order> orders, double totalSales) {
+    private List<PaymentSummary> getPaymentSummaries(List<Order> orders, BigDecimal totalSales) {
         Map<PaymentType, List<Order>> groupedOrders = orders.stream()
                     .collect(Collectors.groupingBy(order -> order.getPaymentType() != null ? order.getPaymentType() : PaymentType.CASH));
 
@@ -180,10 +188,16 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         List<PaymentSummary> paymentSummaries = new ArrayList<>();
 
         for (Map.Entry<PaymentType, List<Order>> entry: groupedOrders.entrySet()){
-            double amount = entry.getValue().stream().mapToDouble(Order::getTotalAmount).sum();
+            BigDecimal amount = entry.getValue().stream()
+                    .map(Order::getTotalAmount)
+                    .filter(Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
             int transactions = entry.getValue().size();
 
-            double percent = (amount/totalSales) * 100;
+            double percent = totalSales.signum() == 0 ? 0.0
+                    : amount.multiply(BigDecimal.valueOf(100))
+                    .divide(totalSales, 4, RoundingMode.HALF_UP)
+                    .doubleValue();
 
             PaymentSummary ps = new PaymentSummary();
 
@@ -230,15 +244,19 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         List<Refund> refunds = refundRepository.findByCashierIdAndCreatedAtBetween(
                 cashier.getId(), shiftReport.getShiftStart(), now);
 
-        double totalRefunds = refunds.stream()
-                .mapToDouble(refund -> refund.getAmount() != null ? refund.getAmount() : 0.0)
-                .sum();
-        double totalSales = orders.stream().mapToDouble(Order::getTotalAmount).sum();
+        BigDecimal totalRefunds = refunds.stream()
+                .map(Refund::getAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalSales = orders.stream()
+                .map(Order::getTotalAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         shiftReport.setTotalRefunds(totalRefunds);
         shiftReport.setTotalSales(totalSales);
         shiftReport.setTotalOrders((double) orders.size());
-        shiftReport.setNetSales(totalSales - totalRefunds);
+        shiftReport.setNetSales(totalSales.subtract(totalRefunds));
         shiftReport.setRecentOrders(getRecentOrders(orders));
         shiftReport.setTopSellingProducts(getTopSellingProducts(orders));
         shiftReport.setPaymentSummaries(getPaymentSummaries(orders, totalSales));

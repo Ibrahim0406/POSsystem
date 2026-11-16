@@ -3,6 +3,8 @@ package pl.com.possystem.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Entity
 @Getter
 @Setter
@@ -18,7 +20,8 @@ public class OrderItem {
 
     private Integer quantity;
 
-    private Double price;
+    @Column(precision = 19, scale = 2)
+    private BigDecimal price;
 
     @ManyToOne
     private Product product;

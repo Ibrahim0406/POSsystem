@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import pl.com.possystem.domain.PaymentType;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -24,7 +25,8 @@ public class Refund {
 
     private String reason;
 
-    private Double amount;
+    @Column(precision = 19, scale = 2)
+    private BigDecimal amount;
 
     @ManyToOne(fetch = FetchType.LAZY)
     private Order order;

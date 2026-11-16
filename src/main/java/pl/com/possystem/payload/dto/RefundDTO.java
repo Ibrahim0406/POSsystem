@@ -5,6 +5,7 @@ import lombok.Data;
 import pl.com.possystem.domain.PaymentType;
 
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -16,7 +17,7 @@ public class RefundDTO {
 
     private String reason;
 
-    private Double amount;
+    private BigDecimal amount;
 
     private OrderDTO order;
 

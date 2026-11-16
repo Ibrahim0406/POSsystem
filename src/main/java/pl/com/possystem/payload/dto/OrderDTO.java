@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import pl.com.possystem.domain.PaymentType;
 import pl.com.possystem.entity.Customer;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -18,7 +19,7 @@ public class OrderDTO {
 
     private Long id;
 
-    private Double totalAmount;
+    private BigDecimal totalAmount;
 
     private LocalDateTime createdAt;
 

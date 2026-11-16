@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 
@@ -25,11 +26,11 @@ public class ProductDTO {
     private String name;
 
 
-    private Double mrp;
+    private BigDecimal mrp;
 
     private String description;
 
-    private Double sellingPrice;
+    private BigDecimal sellingPrice;
 
     private String brand;
 

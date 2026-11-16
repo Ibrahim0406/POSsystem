@@ -11,6 +11,8 @@ import lombok.NoArgsConstructor;
 import pl.com.possystem.entity.Order;
 import pl.com.possystem.entity.Product;
 
+import java.math.BigDecimal;
+
 @Data
 @Builder
 @AllArgsConstructor
@@ -22,7 +24,7 @@ public class OrderItemDTO {
 
     private Integer quantity;
 
-    private Double price;
+    private BigDecimal price;
 
     private ProductDTO product;
 

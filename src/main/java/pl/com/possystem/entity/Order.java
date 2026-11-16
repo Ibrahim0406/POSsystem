@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import pl.com.possystem.domain.PaymentType;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -21,7 +22,8 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Double totalAmount;
+    @Column(precision = 19, scale = 2)
+    private BigDecimal totalAmount;
 
     private LocalDateTime createdAt;
 
