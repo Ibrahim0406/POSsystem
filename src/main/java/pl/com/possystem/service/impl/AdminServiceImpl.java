@@ -2,6 +2,7 @@ package pl.com.possystem.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.com.possystem.domain.AccountStatus;
@@ -21,17 +22,20 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
 public class AdminServiceImpl implements AdminService {
 
     private final StoreRepository storeRepository;
+    private final BranchRepository branchRepository;
     private final UserRepository userRepository;
     private final SupportReportRepository supportReportRepository;
     private final AdminAuditLogRepository auditLogRepository;
     private final SystemSettingRepository settingRepository;
     private final UserService userService;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public AdminDashboardDTO getDashboard() {
@@ -102,6 +106,94 @@ public class AdminServiceImpl implements AdminService {
     public AdminUserDTO getUser(Long userId) throws Exception {
         return toAdminUserDTO(userRepository.findById(userId)
                 .orElseThrow(() -> new Exception("User not found")));
+    }
+
+    @Override
+    @Transactional
+    public AdminUserDTO createUser(AdminUserCreateDTO request) throws Exception {
+        if (request == null) {
+            throw new UserException("User details are required");
+        }
+        String fullName = request.getFullName() == null ? null : request.getFullName().trim();
+        String email = request.getEmail() == null
+                ? null : request.getEmail().trim().toLowerCase(Locale.ROOT);
+        String password = request.getPassword();
+        UserRole role = request.getRole();
+
+        if (fullName == null || fullName.isBlank() || fullName.length() > 255) {
+            throw new UserException("Full name is required and must be at most 255 characters");
+        }
+        if (email == null || !email.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$") || email.length() > 255) {
+            throw new UserException("A valid email address of at most 255 characters is required");
+        }
+        if (password == null || password.isBlank()) {
+            throw new UserException("Password is required");
+        }
+        if (request.getPhone() != null && request.getPhone().length() > 255) {
+            throw new UserException("Phone number must be at most 255 characters");
+        }
+        if (role == null || role == UserRole.ROLE_ADMIN) {
+            throw new UserException("The system administrator role cannot be assigned through this endpoint");
+        }
+        if (userRepository.existsByEmailIgnoreCase(email)) {
+            throw new UserException("User with this email already exists");
+        }
+        if (userRepository.existsByFullNameIgnoreCase(fullName)) {
+            throw new UserException("User with this full name already exists");
+        }
+
+        Store store = null;
+        Branch branch = null;
+        if (request.getStoreId() != null) {
+            store = storeRepository.findById(request.getStoreId())
+                    .orElseThrow(() -> new Exception("Store not found"));
+        }
+        if (request.getBranchId() != null) {
+            branch = branchRepository.findById(request.getBranchId())
+                    .orElseThrow(() -> new Exception("Branch not found"));
+            if (branch.getStore() == null) {
+                throw new UserException("Branch is not assigned to a store");
+            }
+            if (store != null && !Objects.equals(store.getId(), branch.getStore().getId())) {
+                throw new UserException("Branch does not belong to the selected store");
+            }
+            store = branch.getStore();
+        }
+        if ((role == UserRole.ROLE_STORE_ADMIN || role == UserRole.ROLE_STORE_MANAGER)
+                && (store == null || branch != null)) {
+            throw new UserException("A store is required and a branch must not be specified for this role");
+        }
+        if ((role == UserRole.ROLE_BRANCH_MANAGER || role == UserRole.ROLE_BRANCH_CASHIER)
+                && branch == null) {
+            throw new UserException("A branch is required for this role");
+        }
+        if (role == UserRole.ROLE_STORE_ADMIN && store.getStoreAdmin() != null) {
+            throw new UserException("The selected store already has a store administrator");
+        }
+
+        User user = new User();
+        user.setFullName(fullName);
+        user.setEmail(email);
+        user.setPassword(passwordEncoder.encode(password));
+        user.setPhone(request.getPhone() == null ? null : request.getPhone().trim());
+        user.setRole(role);
+        user.setStatus(request.getStatus() == null ? AccountStatus.ACTIVE : request.getStatus());
+        user.setStore(store);
+        user.setBranch(branch);
+        user.setCreatedAt(LocalDateTime.now());
+        user.setUpdatedAt(user.getCreatedAt());
+
+        User saved = userRepository.save(user);
+        if (role == UserRole.ROLE_STORE_ADMIN) {
+            store.setStoreAdmin(saved);
+            storeRepository.save(store);
+        } else if (role == UserRole.ROLE_BRANCH_MANAGER) {
+            branch.setManager(saved);
+            branchRepository.save(branch);
+        }
+        audit("USER_CREATED", "USER", saved.getId().toString(),
+                "role: " + role + ", status: " + user.getStatus());
+        return toAdminUserDTO(saved);
     }
 
     @Override

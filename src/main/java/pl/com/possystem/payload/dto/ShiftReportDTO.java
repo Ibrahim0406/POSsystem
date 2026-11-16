@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import pl.com.possystem.entity.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -18,11 +19,11 @@ public class ShiftReportDTO {
 
     private LocalDateTime shiftEnd;
 
-    private Double totalSales;
+    private BigDecimal totalSales;
 
-    private Double totalRefunds;
+    private BigDecimal totalRefunds;
 
-    private Double netSales;
+    private BigDecimal netSales;
 
     private Double totalOrders;
 

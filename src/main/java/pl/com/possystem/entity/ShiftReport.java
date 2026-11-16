@@ -5,6 +5,7 @@ import com.stripe.model.InvoicePayment;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -26,11 +27,14 @@ public class ShiftReport {
 
     private LocalDateTime shiftEnd;
 
-    private Double totalSales;
+    @Column(precision = 19, scale = 2)
+    private BigDecimal totalSales;
 
-    private Double totalRefunds;
+    @Column(precision = 19, scale = 2)
+    private BigDecimal totalRefunds;
 
-    private Double netSales;
+    @Column(precision = 19, scale = 2)
+    private BigDecimal netSales;
 
     private Double totalOrders;
 

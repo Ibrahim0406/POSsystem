@@ -27,12 +27,13 @@ public class Product {
     @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false)
-    private Double mrp;
+    @Column(nullable = false, precision = 19, scale = 2)
+    private BigDecimal mrp;
 
     private String description;
 
-    private Double sellingPrice;
+    @Column(precision = 19, scale = 2)
+    private BigDecimal sellingPrice;
 
     private String brand;
 

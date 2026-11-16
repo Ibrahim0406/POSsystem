@@ -12,7 +12,9 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Table(name = "invetories")
+@Table(name = "invetories", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"branch_id", "product_id"})
+})
 public class Inventory {
 
     @Id

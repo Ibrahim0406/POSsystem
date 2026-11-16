@@ -1,6 +1,7 @@
 package pl.com.possystem.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import pl.com.possystem.domain.AccountStatus;
@@ -50,6 +51,11 @@ public class AdminController {
             @RequestParam(required = false) Long storeId,
             @RequestParam(required = false) Long branchId) {
         return ResponseEntity.ok(adminService.getUsers(query, role, status, storeId, branchId));
+    }
+
+    @PostMapping("/users")
+    public ResponseEntity<AdminUserDTO> createUser(@RequestBody AdminUserCreateDTO request) throws Exception {
+        return ResponseEntity.status(HttpStatus.CREATED).body(adminService.createUser(request));
     }
 
     @GetMapping("/users/{id}")
