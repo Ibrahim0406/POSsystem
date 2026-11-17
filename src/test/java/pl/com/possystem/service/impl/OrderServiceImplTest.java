@@ -3,11 +3,15 @@ package pl.com.possystem.service.impl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import pl.com.possystem.entity.*;
+import pl.com.possystem.domain.UserRole;
 import pl.com.possystem.payload.dto.OrderDTO;
 import pl.com.possystem.payload.dto.OrderItemDTO;
 import pl.com.possystem.repository.InventoryRepository;
 import pl.com.possystem.repository.OrderRepository;
 import pl.com.possystem.repository.ProductRepository;
+import pl.com.possystem.repository.BranchRepository;
+import pl.com.possystem.repository.CustomerRepository;
+import pl.com.possystem.repository.UserRepository;
 import pl.com.possystem.service.UserService;
 
 import java.math.BigDecimal;
@@ -35,8 +39,12 @@ class OrderServiceImplTest {
         userService = mock(UserService.class);
         productRepository = mock(ProductRepository.class);
         inventoryRepository = mock(InventoryRepository.class);
+        BranchRepository branchRepository = mock(BranchRepository.class);
+        CustomerRepository customerRepository = mock(CustomerRepository.class);
+        UserRepository userRepository = mock(UserRepository.class);
         orderService = new OrderServiceImpl(
-                orderRepository, userService, productRepository, inventoryRepository
+                orderRepository, userService, productRepository, inventoryRepository,
+                branchRepository, customerRepository, userRepository
         );
 
         Store store = new Store();
@@ -49,6 +57,7 @@ class OrderServiceImplTest {
         cashier = new User();
         cashier.setId(30L);
         cashier.setBranch(branch);
+        cashier.setRole(UserRole.ROLE_BRANCH_CASHIER);
 
         Category category = new Category();
         category.setName("Food");

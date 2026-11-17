@@ -9,7 +9,7 @@ public interface CategoryService{
 
     CategoryDTO createCategory(CategoryDTO categoryDTO) throws Exception;
 
-    List<CategoryDTO> getCategoriesByStore(Long storeId);
+    List<CategoryDTO> getCategoriesByStore(Long storeId) throws Exception;
 
     CategoryDTO updateCategory(Long id, CategoryDTO categoryDTO) throws Exception;
 

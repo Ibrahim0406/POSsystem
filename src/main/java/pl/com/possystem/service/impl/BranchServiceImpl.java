@@ -11,6 +11,7 @@ import pl.com.possystem.repository.BranchRepository;
 import pl.com.possystem.repository.StoreRepository;
 import pl.com.possystem.repository.UserRepository;
 import pl.com.possystem.service.BranchService;
+import pl.com.possystem.service.TenantAccess;
 import pl.com.possystem.service.UserService;
 
 import java.time.LocalDateTime;
@@ -31,7 +32,11 @@ public class BranchServiceImpl implements BranchService {
     public BranchDTO createBranch(BranchDTO branchDTO) throws Exception {
 
         User currentUser = userService.getCurrentUser();
-        Store store = storeRepository.findByStoreAdminId(currentUser.getId());
+        Store store = TenantAccess.requireActorStore(currentUser, storeRepository);
+        if (currentUser.getRole() != pl.com.possystem.domain.UserRole.ROLE_STORE_ADMIN) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Only store administrators can create branches");
+        }
         Branch branch = BranchMapper.toEntity(branchDTO, store);
         Branch savedBranch = branchRepository.save(branch);
 
@@ -42,6 +47,7 @@ public class BranchServiceImpl implements BranchService {
     public BranchDTO updateBranch(Long id, BranchDTO branchDTO) throws Exception {
         User currentUser = userService.getCurrentUser();
         Branch branch = branchRepository.findById(id).orElseThrow(() -> new Exception("Branch not found"));
+        TenantAccess.requireBranchAccess(currentUser, branch);
 
         branch.setName(branchDTO.getName());
         branch.setAddress(branchDTO.getAddress());
@@ -60,11 +66,15 @@ public class BranchServiceImpl implements BranchService {
     @Override
     public void deleteBranch(Long id) throws Exception {
         Branch branch = branchRepository.findById(id).orElseThrow(() -> new Exception("Branch not found"));
+        TenantAccess.requireBranchAccess(userService.getCurrentUser(), branch);
         branchRepository.delete(branch);
     }
 
     @Override
-    public List<BranchDTO> getAllBranchesByStoreId(Long storeId) {
+    public List<BranchDTO> getAllBranchesByStoreId(Long storeId) throws Exception {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Store not found"));
+        TenantAccess.requireStoreAccess(userService.getCurrentUser(), store);
         List<Branch> branches = branchRepository.findByStoreId(storeId);
         return branches.stream().map(BranchMapper::toDTO).toList();
     }
@@ -73,6 +83,7 @@ public class BranchServiceImpl implements BranchService {
     public BranchDTO getBranchById(Long id) throws Exception {
 
         Branch branch =  branchRepository.findById(id).orElseThrow(() -> new Exception("Branch not found"));
+        TenantAccess.requireBranchAccess(userService.getCurrentUser(), branch);
         return BranchMapper.toDTO(branch);
     }
 }

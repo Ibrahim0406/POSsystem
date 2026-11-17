@@ -11,6 +11,7 @@ import pl.com.possystem.mapper.ShiftReportMapper;
 import pl.com.possystem.payload.dto.ShiftReportDTO;
 import pl.com.possystem.repository.*;
 import pl.com.possystem.service.ShiftReportService;
+import pl.com.possystem.service.TenantAccess;
 import pl.com.possystem.service.UserService;
 
 import java.math.BigDecimal;
@@ -30,6 +31,7 @@ public class ShiftReportServiceImpl implements ShiftReportService {
     private final RefundRepository refundRepository;
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
+    private final StoreRepository storeRepository;
 
     @Override
     public ShiftReportDTO startShift() throws Exception {
@@ -39,6 +41,7 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         if (branch == null) {
             throw new Exception("The current user is not assigned to a branch and cannot start a shift");
         }
+        TenantAccess.requireBranchAccess(currentUser, branch);
 
         LocalDateTime shiftStart = LocalDateTime.now();
         LocalDateTime startOfDay =shiftStart.withHour(0).withMinute(0).withSecond(0);
@@ -68,6 +71,7 @@ public class ShiftReportServiceImpl implements ShiftReportService {
 
         ShiftReport shiftReport = shiftReportRepository.findTopByCashierAndShiftEndIsNullOrderByShiftStartDesc(user)
                 .orElseThrow(() -> new Exception("Shift report not found"));
+        TenantAccess.requireBranchAccess(user, shiftReport.getBranch());
 
         shiftReport.setShiftEnd(shiftEnd);
 
@@ -112,23 +116,52 @@ public class ShiftReportServiceImpl implements ShiftReportService {
 
     @Override
     public ShiftReportDTO getShiftReportById(Long id) throws Exception {
-        return shiftReportRepository.findById(id).map(ShiftReportMapper ::toDTO).orElseThrow(() -> new Exception("Shift report not found"));
+        ShiftReport report = shiftReportRepository.findById(id)
+                .orElseThrow(() -> new Exception("Shift report not found"));
+        TenantAccess.requireBranchAccess(userService.getCurrentUser(), report.getBranch());
+        return ShiftReportMapper.toDTO(report);
     }
 
     @Override
-    public List<ShiftReportDTO> getAllShiftReports() {
-        List<ShiftReport> shiftReports = shiftReportRepository.findAll();
+    public List<ShiftReportDTO> getAllShiftReports() throws Exception {
+        User actor = userService.getCurrentUser();
+        List<ShiftReport> shiftReports;
+        if (actor.getRole() == UserRole.ROLE_ADMIN) {
+            shiftReports = shiftReportRepository.findAll();
+        } else if (actor.getRole() == UserRole.ROLE_BRANCH_MANAGER
+                || actor.getRole() == UserRole.ROLE_BRANCH_CASHIER) {
+            if (actor.getBranch() == null) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "The current user is not assigned to a branch");
+            }
+            shiftReports = shiftReportRepository.findByBranchId(actor.getBranch().getId());
+        } else {
+            shiftReports = shiftReportRepository.findByBranchStoreId(
+                    TenantAccess.requireActorStore(actor, storeRepository).getId());
+        }
+        shiftReports = shiftReports.stream()
+                .filter(report -> {
+                    TenantAccess.requireBranchAccess(actor, report.getBranch());
+                    return true;
+                })
+                .toList();
         return shiftReports.stream().map(ShiftReportMapper::toDTO).collect(Collectors.toList());
     }
 
     @Override
-    public List<ShiftReportDTO> getShiftReportsByBranchId(Long branchId) {
+    public List<ShiftReportDTO> getShiftReportsByBranchId(Long branchId) throws Exception {
+        Branch branch = branchRepository.findById(branchId)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Branch not found"));
+        TenantAccess.requireBranchAccess(userService.getCurrentUser(), branch);
         List<ShiftReport> shiftReports = shiftReportRepository.findByBranchId(branchId);
         return shiftReports.stream().map(ShiftReportMapper::toDTO).collect(Collectors.toList());
     }
 
     @Override
-    public List<ShiftReportDTO> getShiftReportsByCashierId(Long cashierId) {
+    public List<ShiftReportDTO> getShiftReportsByCashierId(Long cashierId) throws Exception {
+        User cashier = userRepository.findById(cashierId)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cashier not found"));
+        TenantAccess.requireUserAccess(userService.getCurrentUser(), cashier);
         List<ShiftReport> shiftReports = shiftReportRepository.findByCashierId(cashierId);
         return shiftReports.stream().map(ShiftReportMapper::toDTO).collect(Collectors.toList());
     }
@@ -149,12 +182,14 @@ public class ShiftReportServiceImpl implements ShiftReportService {
     public ShiftReportDTO getShiftByCashierAndDate(Long cashierId, LocalDateTime date) throws Exception {
 
         User cashier = userRepository.findById(cashierId).orElseThrow(() -> new Exception("Cashier not found"));
+        TenantAccess.requireUserAccess(userService.getCurrentUser(), cashier);
 
         LocalDateTime start = date.withHour(0).withMinute(0).withSecond(0);
         LocalDateTime end = date.withHour(23).withMinute(59).withSecond(59);
 
         ShiftReport report = shiftReportRepository.findByCashierAndShiftStartBetween(cashier, start, end)
                 .orElseThrow(() -> new Exception("No shift report found for the given cashier and date"));
+        TenantAccess.requireBranchAccess(userService.getCurrentUser(), report.getBranch());
 
         return ShiftReportMapper.toDTO(report);
     }

@@ -25,7 +25,6 @@ public class StoreMapper {
     public static Store toEntity(StoreDTO storeDto, User storeAdmin){
         Store store = new Store();
 
-        store.setId(storeDto.getId());
         store.setBrand(storeDto.getBrand());
         store.setDescription(storeDto.getDescription());
         store.setStoreAdmin(storeAdmin);

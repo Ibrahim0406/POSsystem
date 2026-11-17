@@ -9,6 +9,9 @@ import pl.com.possystem.exception.UserException;
 import pl.com.possystem.mapper.UserMapper;
 import pl.com.possystem.payload.dto.UserDTO;
 import pl.com.possystem.service.UserService;
+import pl.com.possystem.service.TenantAccess;
+
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/user")
@@ -28,9 +31,13 @@ public class UserController {
     @GetMapping("/{id}")
     public ResponseEntity<UserDTO> getUserById(@RequestHeader("Authorization") String jwt, @PathVariable Long id) throws UserException {
 
+        User actor = userService.getUserFromJwt(jwt);
         User user = userService.getUserById(id);
         if (user == null) {
             throw new UserException("User not found");
+        }
+        if (!Objects.equals(actor.getId(), user.getId())) {
+            TenantAccess.requireUserAccess(actor, user);
         }
         return ResponseEntity.ok(UserMapper.toDTO(user));
     }
