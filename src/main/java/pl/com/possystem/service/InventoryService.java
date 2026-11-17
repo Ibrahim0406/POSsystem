@@ -20,5 +20,5 @@ public interface InventoryService {
 
     InventoryDTO getInventoryByProductIdAndBranchId(Long productId, Long branchId) throws Exception;
 
-    List<InventoryDTO> getAllInventoriesByBranchId(Long branchId);
+    List<InventoryDTO> getAllInventoriesByBranchId(Long branchId) throws Exception;
 }

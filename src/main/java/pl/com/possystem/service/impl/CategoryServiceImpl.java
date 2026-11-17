@@ -12,6 +12,7 @@ import pl.com.possystem.payload.dto.CategoryDTO;
 import pl.com.possystem.repository.CategoryRepository;
 import pl.com.possystem.repository.StoreRepository;
 import pl.com.possystem.service.CategoryService;
+import pl.com.possystem.service.TenantAccess;
 import pl.com.possystem.service.UserService;
 
 import java.util.List;
@@ -46,7 +47,10 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    public List<CategoryDTO> getCategoriesByStore(Long storeId) {
+    public List<CategoryDTO> getCategoriesByStore(Long storeId) throws Exception {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Store not found"));
+        TenantAccess.requireStoreAccess(userService.getCurrentUser(), store);
         List<Category> categories = categoryRepository.findByStoreId(storeId);
         return categories.stream().map(CategoryMapper::toDTO).collect(Collectors.toList());
     }

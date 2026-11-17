@@ -14,11 +14,11 @@ public interface ShiftReportService {
 
     ShiftReportDTO getShiftReportById(Long id) throws Exception;
 
-    List<ShiftReportDTO> getAllShiftReports();
+    List<ShiftReportDTO> getAllShiftReports() throws Exception;
 
-    List<ShiftReportDTO> getShiftReportsByBranchId(Long branchId);
+    List<ShiftReportDTO> getShiftReportsByBranchId(Long branchId) throws Exception;
 
-    List<ShiftReportDTO> getShiftReportsByCashierId(Long cashierId);
+    List<ShiftReportDTO> getShiftReportsByCashierId(Long cashierId) throws Exception;
 
     ShiftReportDTO getCurrentShiftProgress(Long cashierId) throws Exception;
 

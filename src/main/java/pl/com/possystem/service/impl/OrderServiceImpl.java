@@ -13,7 +13,11 @@ import pl.com.possystem.payload.dto.OrderDTO;
 import pl.com.possystem.repository.OrderRepository;
 import pl.com.possystem.repository.InventoryRepository;
 import pl.com.possystem.repository.ProductRepository;
+import pl.com.possystem.repository.BranchRepository;
+import pl.com.possystem.repository.CustomerRepository;
+import pl.com.possystem.repository.UserRepository;
 import pl.com.possystem.service.OrderService;
+import pl.com.possystem.service.TenantAccess;
 import pl.com.possystem.service.UserService;
 
 import java.math.BigDecimal;
@@ -35,6 +39,9 @@ public class OrderServiceImpl implements OrderService {
 
     private final ProductRepository productRepository;
     private final InventoryRepository inventoryRepository;
+    private final BranchRepository branchRepository;
+    private final CustomerRepository customerRepository;
+    private final UserRepository userRepository;
 
 
     @Override
@@ -52,6 +59,7 @@ public class OrderServiceImpl implements OrderService {
         if (branch == null || branch.getStore() == null) {
             throw new Exception("Cashier does not belong to any branch.");
         }
+        TenantAccess.requireBranchAccess(cashier, branch);
 
         Map<Long, Integer> requestedQuantities = new TreeMap<>();
         for (var itemDTO : orderDTO.getItems()) {
@@ -98,9 +106,17 @@ public class OrderServiceImpl implements OrderService {
         Order order = Order.builder()
                 .branch(branch)
                 .cashier(cashier)
-                .customer(orderDTO.getCustomer())
                 .paymentType(orderDTO.getPaymentType())
                 .build();
+        Long customerId = orderDTO.getCustomerId() != null
+                ? orderDTO.getCustomerId()
+                : orderDTO.getCustomer() == null ? null : orderDTO.getCustomer().getId();
+        if (customerId != null) {
+            Customer customer = customerRepository.findById(customerId)
+                    .orElseThrow(() -> new EntityNotFoundException("Customer not found"));
+            TenantAccess.requireCustomerAccess(cashier, customer);
+            order.setCustomer(customer);
+        }
 
 
         List<OrderItem> orderItems = orderDTO.getItems().stream().map(
@@ -138,17 +154,22 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderDTO getOrderById(Long id) throws Exception {
-        return orderRepository.findById(id).map(OrderMapper::toDTO).orElseThrow( () -> new Exception("Order not found"));
+        Order order = orderRepository.findById(id).orElseThrow(() -> new Exception("Order not found"));
+        TenantAccess.requireBranchAccess(userService.getCurrentUser(), order.getBranch());
+        return OrderMapper.toDTO(order);
     }
 
     @Override
     public List<OrderDTO> getOrderByBranch(Long branchId, Long customerId, Long cashierId, PaymentType paymentType, OrderStatus status) throws Exception {
+        TenantAccess.requireBranchAccess(userService.getCurrentUser(),
+                branchRepository.findById(branchId).orElseThrow(() -> new Exception("Branch not found")));
 
         return orderRepository.findByBranchId(branchId)
                 .stream()
                 .filter(order -> customerId == null || (order.getCustomer()!= null && order.getCustomer().getId().equals(customerId)))
-                .filter(order -> cashierId == null || order.getCashier().getId().equals(cashierId) && order.getCustomer().getId().equals(cashierId))
-                .filter(order -> paymentType == null || order.getPaymentType().equals(paymentType))
+                .filter(order -> cashierId == null || order.getCashier() != null
+                        && order.getCashier().getId().equals(cashierId))
+                .filter(order -> paymentType == null || paymentType.equals(order.getPaymentType()))
 
                 .map(OrderMapper::toDTO)
                 .collect(Collectors.toList());
@@ -156,6 +177,8 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public List<OrderDTO> getOrderByCashier(Long cashierId) throws Exception {
+        User cashier = userRepository.findById(cashierId).orElseThrow(() -> new Exception("Cashier not found"));
+        TenantAccess.requireUserAccess(userService.getCurrentUser(), cashier);
         return orderRepository.findByCashierId(cashierId)
                 .stream()
                 .map(OrderMapper::toDTO)
@@ -166,12 +189,15 @@ public class OrderServiceImpl implements OrderService {
     public void deleteOrder(Long orderId) throws Exception {
 
         Order order = orderRepository.findById(orderId).orElseThrow(() -> new Exception("Order not found"));
+        TenantAccess.requireBranchAccess(userService.getCurrentUser(), order.getBranch());
 
         orderRepository.delete(order);
     }
 
     @Override
     public List<OrderDTO> getTodayOrdersByBranch(Long branchId) throws Exception {
+        TenantAccess.requireBranchAccess(userService.getCurrentUser(),
+                branchRepository.findById(branchId).orElseThrow(() -> new Exception("Branch not found")));
         LocalDate today = LocalDate.now();
         LocalDateTime start = today.atStartOfDay();
         LocalDateTime end = today.plusDays(1).atStartOfDay();
@@ -182,6 +208,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public List<OrderDTO> getOrdersByCustomerId(Long customerId) throws Exception {
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() -> new Exception("Customer not found"));
+        TenantAccess.requireCustomerAccess(userService.getCurrentUser(), customer);
 
         return orderRepository.findByCustomerId(customerId).stream()
                 .map(OrderMapper::toDTO)
@@ -190,6 +219,8 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public List<OrderDTO> getTop5RecentOrdersByBranchId(Long branchId) throws Exception {
+        TenantAccess.requireBranchAccess(userService.getCurrentUser(),
+                branchRepository.findById(branchId).orElseThrow(() -> new Exception("Branch not found")));
         return orderRepository.findTop5ByBranchIdOrderByCreatedAtDesc(branchId).stream()
                 .map(OrderMapper::toDTO)
                 .collect(Collectors.toList());
