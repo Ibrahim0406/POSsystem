@@ -30,13 +30,14 @@ public class InventoryServiceImpl implements InventoryService {
 
     private final ProductRepository productRepository;
     private final UserService userService;
+    private final TenantAccess tenantAccess;
 
     @Override
     public InventoryDTO createInventory(InventoryDTO inventoryDTO) throws Exception {
         Branch branch = branchRepository.findById(inventoryDTO.getBranchId()).orElseThrow(() -> new Exception("Branch not found"));
 
         Product product = productRepository.findById(inventoryDTO.getProductId()).orElseThrow(() -> new Exception("Product not found"));
-        TenantAccess.requireBranchAccess(userService.getCurrentUser(), branch);
+        tenantAccess.requireBranchManagement(userService.getCurrentUser(), branch);
         if (product.getStore() == null || branch.getStore() == null
                 || !product.getStore().getId().equals(branch.getStore().getId())) {
             throw new org.springframework.security.access.AccessDeniedException(
@@ -54,7 +55,7 @@ public class InventoryServiceImpl implements InventoryService {
     public InventoryDTO updateInventory(Long id, InventoryDTO inventoryDTO) throws Exception {
 
         Inventory inventory = inventoryRepository.findById(id).orElseThrow(() -> new Exception("Inventory not found"));
-        TenantAccess.requireBranchAccess(userService.getCurrentUser(), inventory.getBranch());
+        requireInventoryManagement(inventory);
 
         inventory.setQuantity(inventoryDTO.getQuantity());
 
@@ -66,7 +67,7 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     public void deleteInventory(Long id) throws Exception {
         Inventory inventory = inventoryRepository.findById(id).orElseThrow(() -> new Exception("Inventory not found"));
-        TenantAccess.requireBranchAccess(userService.getCurrentUser(), inventory.getBranch());
+        requireInventoryManagement(inventory);
         inventoryRepository.delete(inventory);
     }
 
@@ -74,7 +75,7 @@ public class InventoryServiceImpl implements InventoryService {
     public InventoryDTO getInventoryById(Long id) throws Exception {
 
         Inventory inventory = inventoryRepository.findById(id).orElseThrow(() -> new Exception("Inventory not found"));
-        TenantAccess.requireBranchAccess(userService.getCurrentUser(), inventory.getBranch());
+        requireInventoryAccess(inventory);
         return InventoryMapper.toDTO(inventory);
     }
 
@@ -82,11 +83,12 @@ public class InventoryServiceImpl implements InventoryService {
     public InventoryDTO getInventoryByProductIdAndBranchId(Long productId, Long branchId) throws Exception {
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new Exception("Branch not found"));
-        TenantAccess.requireBranchAccess(userService.getCurrentUser(), branch);
+        tenantAccess.requireBranchAccess(userService.getCurrentUser(), branch);
         Inventory inventory = inventoryRepository.findByProductIdAndBranchId(productId, branchId);
         if (inventory == null) {
             throw new Exception("Inventory not found");
         }
+        requireInventoryAccess(inventory);
         return InventoryMapper.toDTO(inventory);
     }
 
@@ -94,8 +96,29 @@ public class InventoryServiceImpl implements InventoryService {
     public List<InventoryDTO> getAllInventoriesByBranchId(Long branchId) throws Exception {
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Branch not found"));
-        TenantAccess.requireBranchAccess(userService.getCurrentUser(), branch);
+        tenantAccess.requireBranchAccess(userService.getCurrentUser(), branch);
         List<Inventory> inventories = inventoryRepository.findByBranchId(branchId);
+        for (Inventory inventory : inventories) {
+            requireInventoryAccess(inventory);
+        }
         return inventories.stream().map(InventoryMapper::toDTO).collect(Collectors.toList());
+    }
+
+    private void requireInventoryManagement(Inventory inventory) throws pl.com.possystem.exception.UserException {
+        requireInventoryAccess(inventory);
+        tenantAccess.requireBranchManagement(userService.getCurrentUser(), inventory.getBranch());
+    }
+
+    private void requireInventoryAccess(Inventory inventory) throws pl.com.possystem.exception.UserException {
+        tenantAccess.requireBranchAccess(userService.getCurrentUser(), inventory.getBranch());
+        if (inventory.getProduct() == null
+                || inventory.getProduct().getStore() == null
+                || inventory.getBranch() == null
+                || inventory.getBranch().getStore() == null
+                || !inventory.getProduct().getStore().getId()
+                .equals(inventory.getBranch().getStore().getId())) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Inventory product does not belong to this branch's store");
+        }
     }
 }

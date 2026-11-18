@@ -10,6 +10,7 @@ import pl.com.possystem.repository.StoreRepository;
 import pl.com.possystem.repository.UserRepository;
 import pl.com.possystem.payload.dto.StoreDTO;
 import pl.com.possystem.service.UserService;
+import pl.com.possystem.service.TenantAccess;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -25,7 +26,7 @@ class StoreServiceImplTest {
         UserRepository userRepository = mock(UserRepository.class);
         UserService userService = mock(UserService.class);
         StoreServiceImpl storeService = new StoreServiceImpl(
-                storeRepository, auditLogRepository, userService, userRepository);
+                storeRepository, auditLogRepository, userService, userRepository, mock(TenantAccess.class));
         User admin = new User();
         admin.setId(1L);
         admin.setRole(UserRole.ROLE_STORE_ADMIN);
@@ -53,7 +54,7 @@ class StoreServiceImplTest {
         UserRepository userRepository = mock(UserRepository.class);
         UserService userService = mock(UserService.class);
         StoreServiceImpl storeService = new StoreServiceImpl(
-                storeRepository, auditLogRepository, userService, userRepository);
+                storeRepository, auditLogRepository, userService, userRepository, mock(TenantAccess.class));
         User systemAdmin = new User();
         systemAdmin.setId(1L);
         systemAdmin.setRole(UserRole.ROLE_ADMIN);
@@ -77,7 +78,8 @@ class StoreServiceImplTest {
 
         assertEquals(11L, result.getId());
         assertEquals(storeAdmin.getId(), result.getStoreAdmin().getId());
-        verify(userRepository, never()).save(any(User.class));
+        verify(userRepository).save(storeAdmin);
+        assertEquals(UserRole.ROLE_STORE_ADMIN, storeAdmin.getRole());
     }
 
     @Test
@@ -86,7 +88,8 @@ class StoreServiceImplTest {
                 mock(StoreRepository.class),
                 mock(AdminAuditLogRepository.class),
                 mock(UserService.class),
-                mock(UserRepository.class));
+                mock(UserRepository.class),
+                mock(TenantAccess.class));
         User cashier = new User();
         cashier.setRole(UserRole.ROLE_BRANCH_CASHIER);
 

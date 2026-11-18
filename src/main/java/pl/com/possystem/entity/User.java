@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode
+@EqualsAndHashCode(exclude = {"store", "branch"})
 @Table(name = "users")
 public class User {
 

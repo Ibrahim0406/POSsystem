@@ -12,6 +12,8 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
 
     List<Store> findByBrandContainingIgnoreCase(String brand);
 
+    boolean existsByBrandIgnoreCase(String brand);
+
     long countByStatus(StoreStatus status);
 
 }

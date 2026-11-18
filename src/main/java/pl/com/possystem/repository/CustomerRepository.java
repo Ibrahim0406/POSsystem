@@ -9,8 +9,6 @@ import java.util.List;
 
 public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
-    List<Customer> findByFullNameContainingIgnoreCaseOrEmailContainingIgnoreCase(String fullName, String email);
-
     List<Customer> findByStoreId(Long storeId);
 
     @Query("SELECT c FROM Customer c WHERE c.store.id = :storeId AND "

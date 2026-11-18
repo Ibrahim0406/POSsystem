@@ -33,6 +33,7 @@ public class StoreServiceImpl implements StoreService {
 
     private final UserService userService;
     private final UserRepository userRepository;
+    private final TenantAccess tenantAccess;
 
 
 
@@ -70,17 +71,18 @@ public class StoreServiceImpl implements StoreService {
         }
         Store store = StoreMapper.toEntity(storeDto, storeAdmin);
         Store savedStore = storeRepository.save(store);
+        storeAdmin.setStore(savedStore);
         if (storeAdmin == user) {
-            user.setRole(UserRole.ROLE_STORE_ADMIN);
-            userRepository.save(user);
+            storeAdmin.setRole(UserRole.ROLE_STORE_ADMIN);
         }
+        userRepository.save(storeAdmin);
         return StoreMapper.toDTO(savedStore);
     }
 
     @Override
     public StoreDTO getStoreById(Long id) throws Exception {
         Store store = storeRepository.findById(id).orElseThrow(() -> new Exception ("Store not found with id: " + id));
-        TenantAccess.requireStoreAccess(userService.getCurrentUser(), store);
+        tenantAccess.requireStoreAccess(userService.getCurrentUser(), store);
 
         return StoreMapper.toDTO(store);
     }
@@ -139,7 +141,7 @@ public class StoreServiceImpl implements StoreService {
     public void deleteStore(Long id) throws UserException {
         Store store = storeRepository.findById(id)
                 .orElseThrow(() -> new UserException("Store not found with id: " + id));
-        TenantAccess.requireStoreAccess(userService.getCurrentUser(), store);
+        tenantAccess.requireStoreAccess(userService.getCurrentUser(), store);
         if (userService.getCurrentUser().getRole() != UserRole.ROLE_STORE_ADMIN) {
             throw new org.springframework.security.access.AccessDeniedException(
                     "Only the store administrator can delete a store");
@@ -156,7 +158,7 @@ public class StoreServiceImpl implements StoreService {
         if (currentUser == null) {
             throw new UserException("Don't have permission to access this resource");
         }
-        return StoreMapper.toDTO(TenantAccess.requireActorStore(currentUser, storeRepository));
+        return StoreMapper.toDTO(tenantAccess.requireActorStore(currentUser));
     }
 
     @Override
