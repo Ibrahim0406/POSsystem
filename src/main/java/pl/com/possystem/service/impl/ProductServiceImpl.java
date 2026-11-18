@@ -32,12 +32,13 @@ public class ProductServiceImpl implements ProductService {
     private final CategoryRepository categoryRepository;
 
     private final UserService userService;
+    private final TenantAccess tenantAccess;
 
     @Override
     public ProductDTO createProduct(ProductDTO productDTO, User user) throws Exception {
 
         Store store = storeRepository.findById(productDTO.getStoreId()).orElseThrow(() -> new Exception("Store not found"));
-        TenantAccess.requireStoreManagement(user, store);
+        tenantAccess.requireStoreManagement(user, store);
 
         Category category = categoryRepository.findById(productDTO.getCategoryId()).orElseThrow(() -> new Exception("Category not found"));
         if (category.getStore() == null || !category.getStore().getId().equals(store.getId())) {
@@ -53,7 +54,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public ProductDTO updateProduct(Long id, ProductDTO productDTO, User user) throws Exception {
         Product product = productRepository.findById(id).orElseThrow(() -> new Exception("Product not found"));
-        TenantAccess.requireStoreManagement(user, product.getStore());
+        tenantAccess.requireStoreManagement(user, product.getStore());
 
         product.setName(productDTO.getName());
         product.setDescription(productDTO.getDescription());
@@ -82,7 +83,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public void deleteProduct(Long id, User user) throws Exception {
         Product product = productRepository.findById(id).orElseThrow(() -> new Exception("Product not found"));
-        TenantAccess.requireStoreManagement(user, product.getStore());
+        tenantAccess.requireStoreManagement(user, product.getStore());
         productRepository.delete(product);
     }
 
@@ -90,7 +91,7 @@ public class ProductServiceImpl implements ProductService {
     public List<ProductDTO> getAllProductsByStoreId(Long storeId) throws Exception {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new EntityNotFoundException("Store not found"));
-        TenantAccess.requireStoreAccess(userService.getCurrentUser(), store);
+        tenantAccess.requireStoreAccess(userService.getCurrentUser(), store);
         List<Product> products = productRepository.findByStoreId(storeId);
         return products.stream().map(ProductMapper::toDTO).collect(Collectors.toList());
     }
@@ -98,7 +99,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public List<ProductDTO> searchByKeyword(Long storeId, String keyword) throws Exception {
         Store store = storeRepository.findById(storeId).orElseThrow(() -> new Exception("Store not found"));
-        TenantAccess.requireStoreAccess(userService.getCurrentUser(), store);
+        tenantAccess.requireStoreAccess(userService.getCurrentUser(), store);
         List<Product> products = productRepository.searchByKeyword(storeId, keyword);
         return products.stream().map(ProductMapper::toDTO).collect(Collectors.toList());
     }

@@ -50,6 +50,7 @@ class TenantIsolationIntegrationTest {
     private Category categoryB;
     private Product productB;
     private Inventory inventoryB;
+    private Customer customerA;
     private Customer customerB;
     private User cashierB;
     private Order orderB;
@@ -83,6 +84,11 @@ class TenantIsolationIntegrationTest {
                 .fullName("Customer B " + suffix)
                 .email("customer-b-" + suffix + "@example.test")
                 .store(storeB)
+                .build());
+        customerA = customerRepository.saveAndFlush(Customer.builder()
+                .fullName("Customer A " + suffix)
+                .email("customer-a-" + suffix + "@example.test")
+                .store(storeA)
                 .build());
         orderB = orderRepository.saveAndFlush(Order.builder()
                 .branch(branchB)
@@ -158,6 +164,25 @@ class TenantIsolationIntegrationTest {
         mockMvc.perform(get("/api/user/{id}", cashierB.getId())
                         .header("Authorization", bearer(tokenA)))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void customerListsAndSearchStayInsideTheCurrentTenant() throws Exception {
+        mockMvc.perform(get("/api/customers").header("Authorization", bearer(tokenA)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].id").value(org.hamcrest.Matchers.contains(customerA.getId().intValue())));
+        mockMvc.perform(get("/api/customers/search")
+                        .param("keyword", currentSuffix())
+                        .header("Authorization", bearer(tokenA)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].id").value(org.hamcrest.Matchers.contains(customerA.getId().intValue())));
+        mockMvc.perform(get("/api/customers/{id}", customerB.getId())
+                        .header("Authorization", bearer(tokenA)))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/customers").header("Authorization", bearer(tokenB)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].id").value(org.hamcrest.Matchers.contains(customerB.getId().intValue())));
     }
 
     @Test
@@ -284,6 +309,17 @@ class TenantIsolationIntegrationTest {
                 .andExpect(status().isForbidden());
         mockMvc.perform(get("/api/branches/{id}", branchB.getId())
                         .header("Authorization", bearer(cashierToken)))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/employees/branch/{branchId}", branchA.getId())
+                        .header("Authorization", bearer(cashierToken)))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(put("/api/employees/update/{id}", cashier.getId())
+                        .header("Authorization", bearer(cashierToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"fullName":"Escalated","email":"escalated@example.test",
+                                 "role":"ROLE_BRANCH_MANAGER","branchId":%d}
+                                """.formatted(branchA.getId())))
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(put("/api/inventory/update")

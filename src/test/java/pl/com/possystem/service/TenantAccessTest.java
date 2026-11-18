@@ -6,11 +6,15 @@ import pl.com.possystem.domain.UserRole;
 import pl.com.possystem.entity.Branch;
 import pl.com.possystem.entity.Store;
 import pl.com.possystem.entity.User;
+import pl.com.possystem.repository.StoreRepository;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
 
 class TenantAccessTest {
+
+    private final TenantAccess tenantAccess = new TenantAccess(mock(StoreRepository.class));
 
     @Test
     void deniesUserFromAnotherStore() {
@@ -20,7 +24,7 @@ class TenantAccessTest {
         Branch otherBranch = branch(22L, otherStore);
 
         assertThrows(AccessDeniedException.class,
-                () -> TenantAccess.requireBranchAccess(cashier, otherBranch));
+                () -> tenantAccess.requireBranchAccess(cashier, otherBranch));
     }
 
     @Test
@@ -29,7 +33,7 @@ class TenantAccessTest {
         User cashier = user(UserRole.ROLE_BRANCH_CASHIER, store, branch(11L, store));
 
         assertThrows(AccessDeniedException.class,
-                () -> TenantAccess.requireBranchAccess(cashier, branch(12L, store)));
+                () -> tenantAccess.requireBranchAccess(cashier, branch(12L, store)));
     }
 
     @Test
@@ -38,7 +42,7 @@ class TenantAccessTest {
         Branch branch = branch(11L, store);
         User cashier = user(UserRole.ROLE_BRANCH_CASHIER, store, branch);
 
-        assertDoesNotThrow(() -> TenantAccess.requireBranchAccess(cashier, branch));
+        assertDoesNotThrow(() -> tenantAccess.requireBranchAccess(cashier, branch));
     }
 
     private Store store(Long id) {

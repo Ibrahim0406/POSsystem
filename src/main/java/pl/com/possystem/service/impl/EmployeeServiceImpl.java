@@ -33,12 +33,13 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final BranchRepository branchRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserService userService;
+    private final TenantAccess tenantAccess;
 
     @Override
     public UserDTO createStoreEmployee(UserDTO employee, Long storeId) throws Exception {
         Store store = storeRepository.findById(storeId).orElseThrow(() -> new Exception("Store not found"));
         User actor = userService.getCurrentUser();
-        TenantAccess.requireStoreManagement(actor, store);
+        tenantAccess.requireStoreManagement(actor, store);
 
         if (employee.getRole() != UserRole.ROLE_STORE_MANAGER
                 && employee.getRole() != UserRole.ROLE_BRANCH_MANAGER) {
@@ -83,7 +84,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         Branch branch = branchRepository.findById(branchId).orElseThrow(() -> new Exception("Branch not found"));
         User actor = userService.getCurrentUser();
-        TenantAccess.requireBranchManagement(actor, branch);
+        tenantAccess.requireBranchManagement(actor, branch);
 
         if (employee.getRole() != UserRole.ROLE_BRANCH_CASHIER
                 && employee.getRole() != UserRole.ROLE_BRANCH_MANAGER) {
@@ -116,7 +117,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         User existingEmployee = userRepository.findById(employeeId).orElseThrow(() -> new Exception("Employee not found"));
         User actor = userService.getCurrentUser();
-        TenantAccess.requireUserAccess(actor, existingEmployee);
+        tenantAccess.requireUserManagement(actor, existingEmployee);
         rejectPrivilegedEmployee(existingEmployee);
 
         if (employeeDetails.getRole() == null
@@ -137,7 +138,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         if (employeeDetails.getBranchId() != null) {
             branch = branchRepository.findById(employeeDetails.getBranchId())
                     .orElseThrow(() -> new Exception("Branch not found"));
-            Store employeeStore = TenantAccess.getStore(existingEmployee);
+            Store employeeStore = tenantAccess.getStore(existingEmployee);
             if (employeeStore == null || branch.getStore() == null
                     || !Objects.equals(employeeStore.getId(), branch.getStore().getId())) {
                 throw new UserException("Branch does not belong to the employee's store");
@@ -172,7 +173,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     public void deleteEmployee(Long employeeId) throws Exception {
         User employee = userRepository.findById(employeeId).orElseThrow(() -> new Exception("Employee not found"));
         User actor = userService.getCurrentUser();
-        TenantAccess.requireUserAccess(actor, employee);
+        tenantAccess.requireUserManagement(actor, employee);
         rejectPrivilegedEmployee(employee);
         userRepository.delete(employee);
 
@@ -181,7 +182,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     public List<UserDTO> findStoreEmployees(Long storeId, UserRole userrole) throws Exception {
         Store store = storeRepository.findById(storeId).orElseThrow(() -> new Exception("Store not found"));
-        TenantAccess.requireStoreManagement(userService.getCurrentUser(), store);
+        tenantAccess.requireStoreManagement(userService.getCurrentUser(), store);
 
         return userRepository.findByStore(store).stream()
                 .filter(user -> userrole == null || user.getRole() == userrole)
@@ -193,7 +194,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     public List<UserDTO> findBranchEmployees(Long branchId, UserRole userrole) throws Exception {
         Branch branch = branchRepository.findById(branchId).orElseThrow(() -> new Exception("Branch not found"));
-        TenantAccess.requireBranchAccess(userService.getCurrentUser(), branch);
+        tenantAccess.requireBranchManagement(userService.getCurrentUser(), branch);
 
         return userRepository.findByBranchId(branchId).stream()
                 .filter( user -> userrole == null || user.getRole() == userrole)

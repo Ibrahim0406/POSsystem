@@ -26,6 +26,7 @@ public class CategoryServiceImpl implements CategoryService {
     private final UserService userService;
 
     private final StoreRepository storeRepository;
+    private final TenantAccess tenantAccess;
 
     @Override
     public CategoryDTO createCategory(CategoryDTO categoryDTO) throws Exception {
@@ -33,7 +34,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         Store store = storeRepository.findById(categoryDTO.getStoreId()).orElseThrow(() -> new Exception("Store not found"));
 
-        TenantAccess.requireStoreManagement(user, store);
+        tenantAccess.requireStoreManagement(user, store);
         Category category = Category.builder()
                 .name(categoryDTO.getName())
                 .store(store)
@@ -47,7 +48,7 @@ public class CategoryServiceImpl implements CategoryService {
     public List<CategoryDTO> getCategoriesByStore(Long storeId) throws Exception {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Store not found"));
-        TenantAccess.requireStoreAccess(userService.getCurrentUser(), store);
+        tenantAccess.requireStoreAccess(userService.getCurrentUser(), store);
         List<Category> categories = categoryRepository.findByStoreId(storeId);
         return categories.stream().map(CategoryMapper::toDTO).collect(Collectors.toList());
     }
@@ -58,7 +59,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         User user = userService.getCurrentUser();
 
-        TenantAccess.requireStoreManagement(user, category.getStore());
+        tenantAccess.requireStoreManagement(user, category.getStore());
 
         category.setName(categoryDTO.getName());
 
@@ -71,7 +72,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         User user = userService.getCurrentUser();
 
-        TenantAccess.requireStoreManagement(user, category.getStore());
+        tenantAccess.requireStoreManagement(user, category.getStore());
 
         categoryRepository.deleteById(id);
     }

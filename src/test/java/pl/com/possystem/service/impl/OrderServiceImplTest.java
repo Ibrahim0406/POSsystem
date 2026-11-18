@@ -13,6 +13,7 @@ import pl.com.possystem.repository.BranchRepository;
 import pl.com.possystem.repository.CustomerRepository;
 import pl.com.possystem.repository.UserRepository;
 import pl.com.possystem.service.UserService;
+import pl.com.possystem.service.TenantAccess;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -44,7 +45,7 @@ class OrderServiceImplTest {
         UserRepository userRepository = mock(UserRepository.class);
         orderService = new OrderServiceImpl(
                 orderRepository, userService, productRepository, inventoryRepository,
-                branchRepository, customerRepository, userRepository
+                branchRepository, customerRepository, userRepository, mock(TenantAccess.class)
         );
 
         Store store = new Store();

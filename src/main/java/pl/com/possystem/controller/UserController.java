@@ -19,6 +19,7 @@ import java.util.Objects;
 public class UserController {
 
     private final UserService userService;
+    private final TenantAccess tenantAccess;
 
 
     @GetMapping("profile")
@@ -37,7 +38,7 @@ public class UserController {
             throw new UserException("User not found");
         }
         if (!Objects.equals(actor.getId(), user.getId())) {
-            TenantAccess.requireUserAccess(actor, user);
+            tenantAccess.requireUserAccess(actor, user);
         }
         return ResponseEntity.ok(UserMapper.toDTO(user));
     }
