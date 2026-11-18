@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import pl.com.possystem.domain.UserRole;
+import pl.com.possystem.domain.StoreStatus;
 import pl.com.possystem.entity.Branch;
 import pl.com.possystem.entity.Customer;
 import pl.com.possystem.entity.Store;
@@ -24,6 +25,9 @@ public class TenantAccess {
         }
         if (actor.getRole() == UserRole.ROLE_ADMIN) {
             return;
+        }
+        if (store.getStatus() != StoreStatus.ACTIVE) {
+            throw new AccessDeniedException("This store is pending approval or is not active");
         }
 
         boolean isStoreAdmin = actor.getRole() == UserRole.ROLE_STORE_ADMIN

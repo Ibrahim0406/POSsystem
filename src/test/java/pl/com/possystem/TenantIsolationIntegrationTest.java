@@ -13,6 +13,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import pl.com.possystem.config.JWTProvider;
 import pl.com.possystem.domain.AccountStatus;
+import pl.com.possystem.domain.StoreStatus;
 import pl.com.possystem.domain.UserRole;
 import pl.com.possystem.entity.*;
 import pl.com.possystem.repository.*;
@@ -347,6 +348,8 @@ class TenantIsolationIntegrationTest {
         Store store = new Store();
         store.setBrand(brand);
         store.setStoreAdmin(admin);
+        store = storeRepository.saveAndFlush(store);
+        store.setStatus(StoreStatus.ACTIVE);
         store = storeRepository.saveAndFlush(store);
         admin.setStore(store);
         userRepository.saveAndFlush(admin);

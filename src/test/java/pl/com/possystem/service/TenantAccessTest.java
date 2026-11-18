@@ -3,6 +3,7 @@ package pl.com.possystem.service;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.AccessDeniedException;
 import pl.com.possystem.domain.UserRole;
+import pl.com.possystem.domain.StoreStatus;
 import pl.com.possystem.entity.Branch;
 import pl.com.possystem.entity.Store;
 import pl.com.possystem.entity.User;
@@ -48,6 +49,7 @@ class TenantAccessTest {
     private Store store(Long id) {
         Store store = new Store();
         store.setId(id);
+        store.setStatus(StoreStatus.ACTIVE);
         return store;
     }
 
