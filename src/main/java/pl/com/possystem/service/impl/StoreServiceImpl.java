@@ -70,10 +70,11 @@ public class StoreServiceImpl implements StoreService {
         }
         Store store = StoreMapper.toEntity(storeDto, storeAdmin);
         Store savedStore = storeRepository.save(store);
+        storeAdmin.setStore(savedStore);
         if (storeAdmin == user) {
-            user.setRole(UserRole.ROLE_STORE_ADMIN);
-            userRepository.save(user);
+            storeAdmin.setRole(UserRole.ROLE_STORE_ADMIN);
         }
+        userRepository.save(storeAdmin);
         return StoreMapper.toDTO(savedStore);
     }
 

@@ -37,7 +37,7 @@ public class ProductServiceImpl implements ProductService {
     public ProductDTO createProduct(ProductDTO productDTO, User user) throws Exception {
 
         Store store = storeRepository.findById(productDTO.getStoreId()).orElseThrow(() -> new Exception("Store not found"));
-        TenantAccess.requireStoreAccess(user, store);
+        TenantAccess.requireStoreManagement(user, store);
 
         Category category = categoryRepository.findById(productDTO.getCategoryId()).orElseThrow(() -> new Exception("Category not found"));
         if (category.getStore() == null || !category.getStore().getId().equals(store.getId())) {
@@ -53,7 +53,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public ProductDTO updateProduct(Long id, ProductDTO productDTO, User user) throws Exception {
         Product product = productRepository.findById(id).orElseThrow(() -> new Exception("Product not found"));
-        TenantAccess.requireStoreAccess(user, product.getStore());
+        TenantAccess.requireStoreManagement(user, product.getStore());
 
         product.setName(productDTO.getName());
         product.setDescription(productDTO.getDescription());
@@ -82,7 +82,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public void deleteProduct(Long id, User user) throws Exception {
         Product product = productRepository.findById(id).orElseThrow(() -> new Exception("Product not found"));
-        TenantAccess.requireStoreAccess(user, product.getStore());
+        TenantAccess.requireStoreManagement(user, product.getStore());
         productRepository.delete(product);
     }
 

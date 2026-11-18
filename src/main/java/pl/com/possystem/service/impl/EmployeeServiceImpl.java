@@ -15,6 +15,7 @@ import pl.com.possystem.repository.BranchRepository;
 import pl.com.possystem.repository.StoreRepository;
 import pl.com.possystem.repository.UserRepository;
 import pl.com.possystem.service.EmployeeService;
+import pl.com.possystem.service.TenantAccess;
 import pl.com.possystem.service.UserService;
 
 import java.util.List;
@@ -37,7 +38,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     public UserDTO createStoreEmployee(UserDTO employee, Long storeId) throws Exception {
         Store store = storeRepository.findById(storeId).orElseThrow(() -> new Exception("Store not found"));
         User actor = userService.getCurrentUser();
-        authorizeStore(actor, store);
+        TenantAccess.requireStoreManagement(actor, store);
 
         if (employee.getRole() != UserRole.ROLE_STORE_MANAGER
                 && employee.getRole() != UserRole.ROLE_BRANCH_MANAGER) {
@@ -82,7 +83,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         Branch branch = branchRepository.findById(branchId).orElseThrow(() -> new Exception("Branch not found"));
         User actor = userService.getCurrentUser();
-        authorizeBranch(actor, branch);
+        TenantAccess.requireBranchManagement(actor, branch);
 
         if (employee.getRole() != UserRole.ROLE_BRANCH_CASHIER
                 && employee.getRole() != UserRole.ROLE_BRANCH_MANAGER) {
@@ -115,7 +116,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         User existingEmployee = userRepository.findById(employeeId).orElseThrow(() -> new Exception("Employee not found"));
         User actor = userService.getCurrentUser();
-        authorizeEmployee(actor, existingEmployee);
+        TenantAccess.requireUserAccess(actor, existingEmployee);
         rejectPrivilegedEmployee(existingEmployee);
 
         if (employeeDetails.getRole() == null
@@ -136,7 +137,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         if (employeeDetails.getBranchId() != null) {
             branch = branchRepository.findById(employeeDetails.getBranchId())
                     .orElseThrow(() -> new Exception("Branch not found"));
-            Store employeeStore = getEmployeeStore(existingEmployee);
+            Store employeeStore = TenantAccess.getStore(existingEmployee);
             if (employeeStore == null || branch.getStore() == null
                     || !Objects.equals(employeeStore.getId(), branch.getStore().getId())) {
                 throw new UserException("Branch does not belong to the employee's store");
@@ -171,7 +172,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     public void deleteEmployee(Long employeeId) throws Exception {
         User employee = userRepository.findById(employeeId).orElseThrow(() -> new Exception("Employee not found"));
         User actor = userService.getCurrentUser();
-        authorizeEmployee(actor, employee);
+        TenantAccess.requireUserAccess(actor, employee);
         rejectPrivilegedEmployee(employee);
         userRepository.delete(employee);
 
@@ -180,7 +181,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     public List<UserDTO> findStoreEmployees(Long storeId, UserRole userrole) throws Exception {
         Store store = storeRepository.findById(storeId).orElseThrow(() -> new Exception("Store not found"));
-        authorizeStore(userService.getCurrentUser(), store);
+        TenantAccess.requireStoreManagement(userService.getCurrentUser(), store);
 
         return userRepository.findByStore(store).stream()
                 .filter(user -> userrole == null || user.getRole() == userrole)
@@ -192,71 +193,13 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Override
     public List<UserDTO> findBranchEmployees(Long branchId, UserRole userrole) throws Exception {
         Branch branch = branchRepository.findById(branchId).orElseThrow(() -> new Exception("Branch not found"));
-        authorizeBranch(userService.getCurrentUser(), branch);
+        TenantAccess.requireBranchAccess(userService.getCurrentUser(), branch);
 
         return userRepository.findByBranchId(branchId).stream()
                 .filter( user -> userrole == null || user.getRole() == userrole)
                 .map(UserMapper::toDTO)
                 .collect(Collectors.toList());
 
-    }
-
-    private void authorizeStore(User actor, Store store) throws UserException {
-        if (actor.getRole() == UserRole.ROLE_ADMIN) {
-            return;
-        }
-        boolean isStoreAdmin = actor.getRole() == UserRole.ROLE_STORE_ADMIN
-                && store.getStoreAdmin() != null
-                && Objects.equals(actor.getId(), store.getStoreAdmin().getId());
-        boolean isStoreManager = actor.getRole() == UserRole.ROLE_STORE_MANAGER
-                && actor.getStore() != null
-                && Objects.equals(actor.getStore().getId(), store.getId());
-        if (!isStoreAdmin && !isStoreManager) {
-            throw new UserException("You don't have permission to access this store");
-        }
-    }
-
-    private void authorizeBranch(User actor, Branch branch) throws UserException {
-        if (actor.getRole() == UserRole.ROLE_ADMIN) {
-            return;
-        }
-        boolean managesStore = (actor.getRole() == UserRole.ROLE_STORE_ADMIN
-                && branch.getStore() != null
-                && branch.getStore().getStoreAdmin() != null
-                && Objects.equals(actor.getId(), branch.getStore().getStoreAdmin().getId()))
-                || (actor.getRole() == UserRole.ROLE_STORE_MANAGER
-                && branch.getStore() != null
-                && actor.getStore() != null
-                && Objects.equals(actor.getStore().getId(), branch.getStore().getId()));
-        boolean managesBranch = actor.getRole() == UserRole.ROLE_BRANCH_MANAGER
-                && actor.getBranch() != null
-                && Objects.equals(actor.getBranch().getId(), branch.getId());
-        if (!managesStore && !managesBranch) {
-            throw new UserException("You don't have permission to access this branch");
-        }
-    }
-
-    private void authorizeEmployee(User actor, User employee) throws UserException {
-        Store store = getEmployeeStore(employee);
-        if (store == null) {
-            throw new UserException("Employee is not assigned to a store");
-        }
-        if (actor.getRole() == UserRole.ROLE_BRANCH_MANAGER) {
-            if (actor.getBranch() == null || employee.getBranch() == null
-                    || !Objects.equals(actor.getBranch().getId(), employee.getBranch().getId())
-                    || employee.getRole() != UserRole.ROLE_BRANCH_CASHIER) {
-                throw new UserException("You don't have permission to access this employee");
-            }
-            return;
-        }
-        authorizeStore(actor, store);
-    }
-
-    private Store getEmployeeStore(User employee) {
-        if (employee.getStore() != null) {
-            return employee.getStore();
-        }
-        return employee.getBranch() != null ? employee.getBranch().getStore() : null;
     }
 
     private void rejectPrivilegedEmployee(User employee) throws UserException {

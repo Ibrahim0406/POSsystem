@@ -189,7 +189,7 @@ public class OrderServiceImpl implements OrderService {
     public void deleteOrder(Long orderId) throws Exception {
 
         Order order = orderRepository.findById(orderId).orElseThrow(() -> new Exception("Order not found"));
-        TenantAccess.requireBranchAccess(userService.getCurrentUser(), order.getBranch());
+        TenantAccess.requireBranchManagement(userService.getCurrentUser(), order.getBranch());
 
         orderRepository.delete(order);
     }

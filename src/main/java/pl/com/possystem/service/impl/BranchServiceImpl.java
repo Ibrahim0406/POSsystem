@@ -33,10 +33,7 @@ public class BranchServiceImpl implements BranchService {
 
         User currentUser = userService.getCurrentUser();
         Store store = TenantAccess.requireActorStore(currentUser, storeRepository);
-        if (currentUser.getRole() != pl.com.possystem.domain.UserRole.ROLE_STORE_ADMIN) {
-            throw new org.springframework.security.access.AccessDeniedException(
-                    "Only store administrators can create branches");
-        }
+        TenantAccess.requireStoreManagement(currentUser, store);
         Branch branch = BranchMapper.toEntity(branchDTO, store);
         Branch savedBranch = branchRepository.save(branch);
 
@@ -47,7 +44,7 @@ public class BranchServiceImpl implements BranchService {
     public BranchDTO updateBranch(Long id, BranchDTO branchDTO) throws Exception {
         User currentUser = userService.getCurrentUser();
         Branch branch = branchRepository.findById(id).orElseThrow(() -> new Exception("Branch not found"));
-        TenantAccess.requireBranchAccess(currentUser, branch);
+        TenantAccess.requireBranchManagement(currentUser, branch);
 
         branch.setName(branchDTO.getName());
         branch.setAddress(branchDTO.getAddress());
@@ -66,7 +63,7 @@ public class BranchServiceImpl implements BranchService {
     @Override
     public void deleteBranch(Long id) throws Exception {
         Branch branch = branchRepository.findById(id).orElseThrow(() -> new Exception("Branch not found"));
-        TenantAccess.requireBranchAccess(userService.getCurrentUser(), branch);
+        TenantAccess.requireBranchManagement(userService.getCurrentUser(), branch);
         branchRepository.delete(branch);
     }
 

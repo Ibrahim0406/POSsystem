@@ -32,6 +32,15 @@ public final class TenantAccess {
         }
     }
 
+    public static void requireStoreManagement(User actor, Store store) {
+        requireStoreAccess(actor, store);
+        if (actor.getRole() != UserRole.ROLE_ADMIN
+                && actor.getRole() != UserRole.ROLE_STORE_ADMIN
+                && actor.getRole() != UserRole.ROLE_STORE_MANAGER) {
+            throw new AccessDeniedException("You don't have permission to manage this store");
+        }
+    }
+
     public static void requireBranchAccess(User actor, Branch branch) {
         if (branch == null || branch.getStore() == null) {
             throw new AccessDeniedException("You don't have permission to access this branch");
@@ -45,8 +54,27 @@ public final class TenantAccess {
         }
     }
 
+    public static void requireBranchManagement(User actor, Branch branch) {
+        requireBranchAccess(actor, branch);
+        if (actor.getRole() != UserRole.ROLE_ADMIN
+                && actor.getRole() != UserRole.ROLE_STORE_ADMIN
+                && actor.getRole() != UserRole.ROLE_STORE_MANAGER
+                && actor.getRole() != UserRole.ROLE_BRANCH_MANAGER) {
+            throw new AccessDeniedException("You don't have permission to manage this branch");
+        }
+    }
+
     public static void requireUserAccess(User actor, User target) {
-        if (actor != null && actor.getRole() == UserRole.ROLE_ADMIN) {
+        if (actor == null || target == null) {
+            throw new AccessDeniedException("You don't have permission to access this user");
+        }
+        if (actor.getRole() == UserRole.ROLE_ADMIN) {
+            return;
+        }
+        if (actor.getRole() == UserRole.ROLE_BRANCH_CASHIER) {
+            if (!Objects.equals(actor.getId(), target.getId())) {
+                throw new AccessDeniedException("You don't have permission to access this user");
+            }
             return;
         }
         Store store = getStore(target);
@@ -54,9 +82,11 @@ public final class TenantAccess {
             throw new AccessDeniedException("You don't have permission to access this user");
         }
         requireStoreAccess(actor, store);
-        if (actor.getRole() == UserRole.ROLE_BRANCH_MANAGER
+        if ((actor.getRole() == UserRole.ROLE_BRANCH_MANAGER
+                || actor.getRole() == UserRole.ROLE_BRANCH_CASHIER)
                 && (target.getBranch() == null || actor.getBranch() == null
-                || !Objects.equals(actor.getBranch().getId(), target.getBranch().getId()))) {
+                || !Objects.equals(actor.getBranch().getId(), target.getBranch().getId())
+                || target.getRole() != UserRole.ROLE_BRANCH_CASHIER)) {
             throw new AccessDeniedException("You don't have permission to access this user");
         }
     }

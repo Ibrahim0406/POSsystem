@@ -134,7 +134,7 @@ public class RefundServiceImpl  implements RefundService {
     public void deleteRefund(Long refundId) throws Exception {
         Refund refund = refundRepository.findById(refundId)
                 .orElseThrow(() -> new Exception("Refund not found"));
-        TenantAccess.requireBranchAccess(userService.getCurrentUser(), refund.getBranch());
+        TenantAccess.requireBranchManagement(userService.getCurrentUser(), refund.getBranch());
         refundRepository.delete(refund);
     }
 }

@@ -2,7 +2,6 @@ package pl.com.possystem.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import pl.com.possystem.domain.UserRole;
 import pl.com.possystem.entity.Category;
 import pl.com.possystem.entity.Store;
 import pl.com.possystem.entity.User;
@@ -16,7 +15,6 @@ import pl.com.possystem.service.TenantAccess;
 import pl.com.possystem.service.UserService;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,12 +33,11 @@ public class CategoryServiceImpl implements CategoryService {
 
         Store store = storeRepository.findById(categoryDTO.getStoreId()).orElseThrow(() -> new Exception("Store not found"));
 
+        TenantAccess.requireStoreManagement(user, store);
         Category category = Category.builder()
                 .name(categoryDTO.getName())
                 .store(store)
                 .build();
-
-        checkAuthority(user, category.getStore());
 
 
         return CategoryMapper.toDTO(categoryRepository.save(category));
@@ -61,7 +58,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         User user = userService.getCurrentUser();
 
-        checkAuthority(user, category.getStore());
+        TenantAccess.requireStoreManagement(user, category.getStore());
 
         category.setName(categoryDTO.getName());
 
@@ -74,25 +71,8 @@ public class CategoryServiceImpl implements CategoryService {
 
         User user = userService.getCurrentUser();
 
-        checkAuthority(user, category.getStore());
+        TenantAccess.requireStoreManagement(user, category.getStore());
 
         categoryRepository.deleteById(id);
     }
-
-
-    private void checkAuthority(User user, Store store) throws Exception {
-        boolean isStoreAdmin = user.getRole() == UserRole.ROLE_STORE_ADMIN
-                && store.getStoreAdmin() != null
-                && Objects.equals(user.getId(), store.getStoreAdmin().getId());
-        boolean isStoreManager = user.getRole() == UserRole.ROLE_STORE_MANAGER
-                && user.getStore() != null
-                && Objects.equals(user.getStore().getId(), store.getId());
-
-        if (!isStoreAdmin && !isStoreManager) {
-            throw new Exception("You don't have permission to perform this action");
-        }
-    }
-
-
-
 }

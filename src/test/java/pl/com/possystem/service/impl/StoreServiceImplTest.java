@@ -77,7 +77,8 @@ class StoreServiceImplTest {
 
         assertEquals(11L, result.getId());
         assertEquals(storeAdmin.getId(), result.getStoreAdmin().getId());
-        verify(userRepository, never()).save(any(User.class));
+        verify(userRepository).save(storeAdmin);
+        assertEquals(UserRole.ROLE_STORE_ADMIN, storeAdmin.getRole());
     }
 
     @Test
