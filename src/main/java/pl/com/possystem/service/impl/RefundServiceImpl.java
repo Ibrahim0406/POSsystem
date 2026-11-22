@@ -3,6 +3,7 @@ package pl.com.possystem.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cglib.core.Local;
 import org.springframework.stereotype.Service;
+import pl.com.possystem.domain.UserRole;
 import pl.com.possystem.entity.Branch;
 import pl.com.possystem.entity.Order;
 import pl.com.possystem.entity.Refund;
@@ -71,7 +72,11 @@ public class RefundServiceImpl  implements RefundService {
                   throw new org.springframework.security.access.AccessDeniedException(
                           "The current user is not assigned to a branch");
               }
-              refunds = refundRepository.findByBranchId(actor.getBranch().getId());
+              refunds = refundRepository.findByBranchId(actor.getBranch().getId()).stream()
+                      .filter(refund -> actor.getRole() == UserRole.ROLE_BRANCH_MANAGER
+                              || (refund.getCashier() != null
+                              && java.util.Objects.equals(actor.getId(), refund.getCashier().getId())))
+                      .collect(java.util.stream.Collectors.toList());
           } else {
               refunds = refundRepository.findByBranchStoreId(
                       tenantAccess.requireActorStore(actor).getId());
@@ -98,8 +103,12 @@ public class RefundServiceImpl  implements RefundService {
     public List<RefundDTO> getRefundByShiftReport(Long shiftReportId) throws Exception {
         ShiftReport report = shiftReportRepository.findById(shiftReportId)
                 .orElseThrow(() -> new Exception("Shift report not found"));
-        tenantAccess.requireBranchAccess(userService.getCurrentUser(), report.getBranch());
+        User actor = userService.getCurrentUser();
+        tenantAccess.requireBranchAccess(actor, report.getBranch());
         return refundRepository.findByShiftReportId(shiftReportId).stream()
+                .filter(refund -> actor.getRole() != UserRole.ROLE_BRANCH_CASHIER
+                        || (refund.getCashier() != null
+                        && java.util.Objects.equals(actor.getId(), refund.getCashier().getId())))
                 .map(RefundMapper::toDTO).collect(Collectors.toList());
     }
 
@@ -116,8 +125,12 @@ public class RefundServiceImpl  implements RefundService {
     public List<RefundDTO> getRefundByBranch(Long branchId) throws Exception {
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new Exception("Branch not found"));
-        tenantAccess.requireBranchAccess(userService.getCurrentUser(), branch);
+        User actor = userService.getCurrentUser();
+        tenantAccess.requireBranchAccess(actor, branch);
         return refundRepository.findByBranchId(branchId).stream()
+                .filter(refund -> actor.getRole() != UserRole.ROLE_BRANCH_CASHIER
+                        || (refund.getCashier() != null
+                        && java.util.Objects.equals(actor.getId(), refund.getCashier().getId())))
                 .map(RefundMapper::toDTO).collect(Collectors.toList());
     }
 
@@ -125,7 +138,14 @@ public class RefundServiceImpl  implements RefundService {
     public RefundDTO getRefundById(Long refundId) throws Exception {
         Refund refund = refundRepository.findById(refundId)
                 .orElseThrow(() -> new Exception("Refund not found"));
-        tenantAccess.requireBranchAccess(userService.getCurrentUser(), refund.getBranch());
+        User actor = userService.getCurrentUser();
+        tenantAccess.requireBranchAccess(actor, refund.getBranch());
+        if (actor.getRole() == UserRole.ROLE_BRANCH_CASHIER
+                && (refund.getCashier() == null
+                || !java.util.Objects.equals(actor.getId(), refund.getCashier().getId()))) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Cashiers can only view their own refunds");
+        }
         return RefundMapper.toDTO(refund);
     }
 

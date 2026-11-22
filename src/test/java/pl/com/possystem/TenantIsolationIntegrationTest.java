@@ -61,6 +61,7 @@ class TenantIsolationIntegrationTest {
     private String tokenB;
     private String tokenBranchManagerA;
     private String tokenStoreManagerA;
+    private String tokenCashierA;
 
     @BeforeEach
     void setUp() {
@@ -124,6 +125,11 @@ class TenantIsolationIntegrationTest {
         branchA.setManager(branchManagerA);
         branchRepository.saveAndFlush(branchA);
         tokenBranchManagerA = tokenFor(branchManagerA);
+        User cashierA = saveUser("cashier-a-" + suffix, UserRole.ROLE_BRANCH_CASHIER);
+        cashierA.setStore(storeA);
+        cashierA.setBranch(branchA);
+        cashierA = userRepository.saveAndFlush(cashierA);
+        tokenCashierA = tokenFor(cashierA);
     }
 
     @Test
@@ -466,6 +472,64 @@ class TenantIsolationIntegrationTest {
                                 """))
                 .andExpect(status().isForbidden());
         org.junit.jupiter.api.Assertions.assertEquals(10, inventoryB.getQuantity());
+    }
+
+    @Test
+    void branchCashierCanSellAndUseOwnShiftButCannotManageAdminData() throws Exception {
+        mockMvc.perform(post("/api/shift-reports/start")
+                        .header("Authorization", bearer(tokenCashierA)))
+                .andExpect(status().isOk());
+        mockMvc.perform(patch("/api/shift-reports/end")
+                        .header("Authorization", bearer(tokenCashierA)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/orders/get/{id}", orderB.getId())
+                        .header("Authorization", bearer(tokenCashierA)))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/orders/cashier/{id}", cashierB.getId())
+                        .header("Authorization", bearer(tokenCashierA)))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/refunds/{id}", refundB.getId())
+                        .header("Authorization", bearer(tokenCashierA)))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/shift-reports/{id}", shiftReportB.getId())
+                        .header("Authorization", bearer(tokenCashierA)))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/api/refunds/create")
+                        .header("Authorization", bearer(tokenCashierA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"orderId":%d,"amount":1,"reason":"test"}
+                                """.formatted(orderB.getId())))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(put("/api/inventory/update")
+                        .param("id", inventoryB.getId().toString())
+                        .header("Authorization", bearer(tokenCashierA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"quantity":999}
+                                """))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(put("/api/products/update/{id}", productB.getId())
+                        .header("Authorization", bearer(tokenCashierA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"changed","sku":"%s","mrp":99,"sellingPrice":98}
+                                """.formatted(productB.getSku())))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(put("/api/employees/update/{id}", cashierB.getId())
+                        .header("Authorization", bearer(tokenCashierA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"fullName":"changed","email":"changed@example.test",
+                                 "role":"ROLE_BRANCH_CASHIER","branchId":%d}
+                                """.formatted(branchB.getId())))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(delete("/api/employees/delete/{id}", cashierB.getId())
+                        .header("Authorization", bearer(tokenCashierA)))
+                .andExpect(status().isForbidden());
     }
 
     private User saveUser(String email, UserRole role) {
