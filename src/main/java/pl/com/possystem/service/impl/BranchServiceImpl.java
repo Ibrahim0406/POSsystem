@@ -13,6 +13,7 @@ import pl.com.possystem.repository.UserRepository;
 import pl.com.possystem.service.BranchService;
 import pl.com.possystem.service.TenantAccess;
 import pl.com.possystem.service.UserService;
+import pl.com.possystem.domain.UserRole;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -72,7 +73,18 @@ public class BranchServiceImpl implements BranchService {
     public List<BranchDTO> getAllBranchesByStoreId(Long storeId) throws Exception {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Store not found"));
-        tenantAccess.requireStoreAccess(userService.getCurrentUser(), store);
+        User actor = userService.getCurrentUser();
+        tenantAccess.requireStoreAccess(actor, store);
+        if (actor.getRole() == UserRole.ROLE_BRANCH_MANAGER
+                || actor.getRole() == UserRole.ROLE_BRANCH_CASHIER) {
+            Branch assignedBranch = actor.getBranch();
+            if (assignedBranch == null || assignedBranch.getStore() == null
+                    || !java.util.Objects.equals(assignedBranch.getStore().getId(), store.getId())) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "The current user is not assigned to this store");
+            }
+            return List.of(BranchMapper.toDTO(assignedBranch));
+        }
         List<Branch> branches = branchRepository.findByStoreId(storeId);
         return branches.stream().map(BranchMapper::toDTO).toList();
     }

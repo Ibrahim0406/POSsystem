@@ -59,6 +59,7 @@ class TenantIsolationIntegrationTest {
     private ShiftReport shiftReportB;
     private String tokenA;
     private String tokenB;
+    private String tokenBranchManagerA;
     private String tokenStoreManagerA;
 
     @BeforeEach
@@ -116,6 +117,13 @@ class TenantIsolationIntegrationTest {
         storeManagerA.setStore(storeA);
         storeManagerA = userRepository.saveAndFlush(storeManagerA);
         tokenStoreManagerA = tokenFor(storeManagerA);
+        User branchManagerA = saveUser("branch-manager-a-" + suffix, UserRole.ROLE_BRANCH_MANAGER);
+        branchManagerA.setStore(storeA);
+        branchManagerA.setBranch(branchA);
+        branchManagerA = userRepository.saveAndFlush(branchManagerA);
+        branchA.setManager(branchManagerA);
+        branchRepository.saveAndFlush(branchA);
+        tokenBranchManagerA = tokenFor(branchManagerA);
     }
 
     @Test
@@ -255,6 +263,77 @@ class TenantIsolationIntegrationTest {
                 .andExpect(status().isOk());
         mockMvc.perform(get("/api/employees/branch/{branchId}", branchB.getId())
                         .header("Authorization", bearer(tokenStoreManagerA)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void branchManagerIsLimitedToAssignedBranch() throws Exception {
+        mockMvc.perform(get("/api/branches/{id}", branchA.getId())
+                        .header("Authorization", bearer(tokenBranchManagerA)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/branches/{id}", branchB.getId())
+                        .header("Authorization", bearer(tokenBranchManagerA)))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/branches/store/{storeId}", storeA.getId())
+                        .header("Authorization", bearer(tokenBranchManagerA)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$[0].id").value(branchA.getId()));
+
+        mockMvc.perform(get("/api/employees/branch/{branchId}", branchA.getId())
+                        .header("Authorization", bearer(tokenBranchManagerA)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/employees/branch/{branchId}", branchB.getId())
+                        .header("Authorization", bearer(tokenBranchManagerA)))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/api/employees/branch/{branchId}", branchA.getId())
+                        .header("Authorization", bearer(tokenBranchManagerA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"fullName":"Branch Cashier","email":"branch-cashier-a@example.test",
+                                 "password":"secure-password","role":"ROLE_BRANCH_CASHIER",
+                                 "branchId":%d}
+                                """.formatted(branchA.getId())))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/employees/branch/{branchId}", branchA.getId())
+                        .header("Authorization", bearer(tokenBranchManagerA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"fullName":"Branch Manager","email":"branch-manager-a2@example.test",
+                                 "password":"secure-password","role":"ROLE_BRANCH_MANAGER",
+                                 "branchId":%d}
+                                """.formatted(branchA.getId())))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/api/branches/create")
+                        .header("Authorization", bearer(tokenBranchManagerA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"forbidden","address":"Address","phoneNumber":"0610000000",
+                                 "email":"forbidden@example.test","workingDays":["Monday"],
+                                 "openTime":"09:00:00","closeTime":"17:00:00"}
+                                """))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/inventory/branch/{branchId}", branchA.getId())
+                        .header("Authorization", bearer(tokenBranchManagerA)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/inventory/branch/{branchId}", branchB.getId())
+                        .header("Authorization", bearer(tokenBranchManagerA)))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/refunds/branch/{branchId}", branchA.getId())
+                        .header("Authorization", bearer(tokenBranchManagerA)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/refunds/branch/{branchId}", branchB.getId())
+                        .header("Authorization", bearer(tokenBranchManagerA)))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/shift-reports/branch/{branchId}", branchA.getId())
+                        .header("Authorization", bearer(tokenBranchManagerA)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/shift-reports/branch/{branchId}", branchB.getId())
+                        .header("Authorization", bearer(tokenBranchManagerA)))
                 .andExpect(status().isForbidden());
     }
 

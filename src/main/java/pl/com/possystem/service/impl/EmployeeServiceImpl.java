@@ -94,7 +94,8 @@ public class EmployeeServiceImpl implements EmployeeService {
                 && actor.getRole() != UserRole.ROLE_STORE_ADMIN
                 && actor.getRole() != UserRole.ROLE_STORE_MANAGER
                 && actor.getRole() != UserRole.ROLE_ADMIN) {
-            throw new UserException("Only store management can create a branch manager");
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Only store management can create a branch manager");
         }
         requirePassword(employee.getPassword());
 

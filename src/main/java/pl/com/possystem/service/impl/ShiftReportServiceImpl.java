@@ -168,8 +168,14 @@ public class ShiftReportServiceImpl implements ShiftReportService {
 
     @Override
     public ShiftReportDTO getCurrentShiftProgress(Long cashierId) throws Exception {
-
-        User cashier = userService.getCurrentUser();
+        User actor = userService.getCurrentUser();
+        User cashier = actor;
+        if (cashierId != null) {
+            cashier = userRepository.findById(cashierId)
+                    .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cashier not found"));
+            tenantAccess.requireUserAccess(actor, cashier);
+        }
+        tenantAccess.requireBranchAccess(actor, cashier.getBranch());
 
         ShiftReport shiftReport = shiftReportRepository
                 .findTopByCashierAndShiftEndIsNullOrderByShiftStartDesc(cashier)
