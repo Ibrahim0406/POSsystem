@@ -118,7 +118,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         User existingEmployee = userRepository.findById(employeeId).orElseThrow(() -> new Exception("Employee not found"));
         User actor = userService.getCurrentUser();
         tenantAccess.requireUserManagement(actor, existingEmployee);
-        rejectPrivilegedEmployee(existingEmployee);
+        rejectPrivilegedEmployee(actor, existingEmployee);
 
         if (employeeDetails.getRole() == null
                 || employeeDetails.getRole() == UserRole.ROLE_ADMIN
@@ -174,7 +174,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         User employee = userRepository.findById(employeeId).orElseThrow(() -> new Exception("Employee not found"));
         User actor = userService.getCurrentUser();
         tenantAccess.requireUserManagement(actor, employee);
-        rejectPrivilegedEmployee(employee);
+        rejectPrivilegedEmployee(actor, employee);
         userRepository.delete(employee);
 
     }
@@ -203,9 +203,13 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     }
 
-    private void rejectPrivilegedEmployee(User employee) throws UserException {
+    private void rejectPrivilegedEmployee(User actor, User employee) throws UserException {
         if (employee.getRole() == UserRole.ROLE_ADMIN || employee.getRole() == UserRole.ROLE_STORE_ADMIN) {
             throw new UserException("Privileged accounts cannot be modified through employee management");
+        }
+        if (actor.getRole() == UserRole.ROLE_STORE_MANAGER
+                && employee.getRole() == UserRole.ROLE_STORE_MANAGER) {
+            throw new UserException("Only a store administrator can manage other store managers");
         }
     }
 

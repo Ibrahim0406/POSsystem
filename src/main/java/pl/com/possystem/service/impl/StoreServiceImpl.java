@@ -107,6 +107,12 @@ public class StoreServiceImpl implements StoreService {
     public StoreDTO updateStore(Long id, StoreDTO storeDto) throws UserException {
 
         User currentUser = userService.getCurrentUser();
+        if (currentUser.getRole() == UserRole.ROLE_STORE_MANAGER
+                || currentUser.getRole() == UserRole.ROLE_BRANCH_MANAGER
+                || currentUser.getRole() == UserRole.ROLE_BRANCH_CASHIER) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Only the store administrator or system administrator can update a store");
+        }
 
         Store existing = storeRepository.findByStoreAdminId(currentUser.getId());
 
