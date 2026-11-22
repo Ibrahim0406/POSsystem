@@ -59,6 +59,7 @@ class TenantIsolationIntegrationTest {
     private ShiftReport shiftReportB;
     private String tokenA;
     private String tokenB;
+    private String tokenStoreManagerA;
 
     @BeforeEach
     void setUp() {
@@ -111,6 +112,10 @@ class TenantIsolationIntegrationTest {
                 .build());
         tokenA = tokenFor(adminA);
         tokenB = tokenFor(adminB);
+        User storeManagerA = saveUser("manager-a-" + suffix, UserRole.ROLE_STORE_MANAGER);
+        storeManagerA.setStore(storeA);
+        storeManagerA = userRepository.saveAndFlush(storeManagerA);
+        tokenStoreManagerA = tokenFor(storeManagerA);
     }
 
     @Test
@@ -201,6 +206,56 @@ class TenantIsolationIntegrationTest {
         mockMvc.perform(get("/api/store/{id}", storeB.getId())
                         .header("Authorization", bearer(tokenFor(systemAdmin))))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void storeManagerCanOperateAllBranchesAndCannotChangeStoreOwner() throws Exception {
+        mockMvc.perform(post("/api/branches/create")
+                        .header("Authorization", bearer(tokenStoreManagerA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"manager-created","address":"Address",
+                                 "phoneNumber":"0610000000","email":"manager-created@example.test",
+                                 "workingDays":["Monday"],"openTime":"09:00:00","closeTime":"17:00:00"}
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/branches/store/{storeId}", storeA.getId())
+                        .header("Authorization", bearer(tokenStoreManagerA)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/customers")
+                        .header("Authorization", bearer(tokenStoreManagerA)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/employees/store/{storeId}", storeA.getId())
+                        .header("Authorization", bearer(tokenStoreManagerA)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(put("/api/store/update/{id}", storeA.getId())
+                        .header("Authorization", bearer(tokenStoreManagerA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"brand":"changed","description":"changed"}
+                                """))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(delete("/api/store/delete/{id}", storeA.getId())
+                        .header("Authorization", bearer(tokenStoreManagerA)))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/store/{id}", storeB.getId())
+                        .header("Authorization", bearer(tokenStoreManagerA)))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/api/employees/branch/{branchId}", branchA.getId())
+                        .header("Authorization", bearer(tokenStoreManagerA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"fullName":"Manager Cashier","email":"manager-cashier@example.test",
+                                 "password":"secure-password","role":"ROLE_BRANCH_CASHIER",
+                                 "branchId":%d}
+                                """.formatted(branchA.getId())))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/employees/branch/{branchId}", branchB.getId())
+                        .header("Authorization", bearer(tokenStoreManagerA)))
+                .andExpect(status().isForbidden());
     }
 
     @Test
