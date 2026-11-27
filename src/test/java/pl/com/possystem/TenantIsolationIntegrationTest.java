@@ -532,6 +532,17 @@ class TenantIsolationIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void anOrderCanOnlyBeRefundedOnce() throws Exception {
+        mockMvc.perform(post("/api/refunds/create")
+                        .header("Authorization", bearer(tokenB))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"orderId":%d,"amount":1,"reason":"duplicate attempt"}
+                                """.formatted(orderB.getId())))
+                .andExpect(status().isConflict());
+    }
+
     private User saveUser(String email, UserRole role) {
         User user = new User();
         user.setFullName(email);

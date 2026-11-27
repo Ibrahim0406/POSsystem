@@ -1,8 +1,11 @@
 package pl.com.possystem.service.impl;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.cglib.core.Local;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 import pl.com.possystem.domain.UserRole;
 import pl.com.possystem.entity.Branch;
 import pl.com.possystem.entity.Order;
@@ -45,6 +48,9 @@ public class RefundServiceImpl  implements RefundService {
 
         Branch branch = order.getBranch();
         tenantAccess.requireBranchAccess(cashier, branch);
+        if (refundRepository.existsByOrderId(order.getId())) {
+            throw alreadyRefunded();
+        }
 
         Refund createdRefund = Refund.builder()
                 .order(order)
@@ -56,8 +62,31 @@ public class RefundServiceImpl  implements RefundService {
                 .build();
 
 
-        Refund savedRefund = refundRepository.save(createdRefund);
-        return RefundMapper.toDTO(savedRefund);
+        try {
+            Refund savedRefund = refundRepository.saveAndFlush(createdRefund);
+            return RefundMapper.toDTO(savedRefund);
+        } catch (DataIntegrityViolationException exception) {
+            if (isOrderRefundConstraintViolation(exception)) {
+                throw alreadyRefunded();
+            }
+            throw exception;
+        }
+    }
+
+    private ResponseStatusException alreadyRefunded() {
+        return new ResponseStatusException(HttpStatus.CONFLICT, "This order has already been refunded");
+    }
+
+    private boolean isOrderRefundConstraintViolation(Throwable exception) {
+        Throwable cause = exception;
+        while (cause != null) {
+            if (cause instanceof ConstraintViolationException violation
+                    && "uk_refunds_order_id".equalsIgnoreCase(violation.getConstraintName())) {
+                return true;
+            }
+            cause = cause.getCause();
+        }
+        return false;
     }
 
     @Override
