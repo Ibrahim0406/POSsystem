@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.com.possystem.domain.OrderStatus;
 import pl.com.possystem.domain.PaymentType;
+import pl.com.possystem.domain.UserRole;
 import pl.com.possystem.entity.*;
 import pl.com.possystem.mapper.OrderMapper;
 import pl.com.possystem.payload.dto.OrderDTO;
@@ -156,17 +157,28 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderDTO getOrderById(Long id) throws Exception {
         Order order = orderRepository.findById(id).orElseThrow(() -> new Exception("Order not found"));
-        tenantAccess.requireBranchAccess(userService.getCurrentUser(), order.getBranch());
+        User actor = userService.getCurrentUser();
+        tenantAccess.requireBranchAccess(actor, order.getBranch());
+        if (actor.getRole() == UserRole.ROLE_BRANCH_CASHIER
+                && (order.getCashier() == null
+                || !java.util.Objects.equals(actor.getId(), order.getCashier().getId()))) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Cashiers can only view their own orders");
+        }
         return OrderMapper.toDTO(order);
     }
 
     @Override
     public List<OrderDTO> getOrderByBranch(Long branchId, Long customerId, Long cashierId, PaymentType paymentType, OrderStatus status) throws Exception {
-        tenantAccess.requireBranchAccess(userService.getCurrentUser(),
+        User actor = userService.getCurrentUser();
+        tenantAccess.requireBranchAccess(actor,
                 branchRepository.findById(branchId).orElseThrow(() -> new Exception("Branch not found")));
 
         return orderRepository.findByBranchId(branchId)
                 .stream()
+                .filter(order -> actor.getRole() != UserRole.ROLE_BRANCH_CASHIER
+                        || (order.getCashier() != null
+                        && java.util.Objects.equals(actor.getId(), order.getCashier().getId())))
                 .filter(order -> customerId == null || (order.getCustomer()!= null && order.getCustomer().getId().equals(customerId)))
                 .filter(order -> cashierId == null || order.getCashier() != null
                         && order.getCashier().getId().equals(cashierId))
@@ -197,12 +209,16 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public List<OrderDTO> getTodayOrdersByBranch(Long branchId) throws Exception {
-        tenantAccess.requireBranchAccess(userService.getCurrentUser(),
+        User actor = userService.getCurrentUser();
+        tenantAccess.requireBranchAccess(actor,
                 branchRepository.findById(branchId).orElseThrow(() -> new Exception("Branch not found")));
         LocalDate today = LocalDate.now();
         LocalDateTime start = today.atStartOfDay();
         LocalDateTime end = today.plusDays(1).atStartOfDay();
         return orderRepository.findByBranchIdAndCreatedAtBetween(branchId, start, end).stream()
+                .filter(order -> actor.getRole() != UserRole.ROLE_BRANCH_CASHIER
+                        || (order.getCashier() != null
+                        && java.util.Objects.equals(actor.getId(), order.getCashier().getId())))
                 .map(OrderMapper::toDTO)
                 .collect(Collectors.toList());
     }
@@ -220,9 +236,13 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public List<OrderDTO> getTop5RecentOrdersByBranchId(Long branchId) throws Exception {
-        tenantAccess.requireBranchAccess(userService.getCurrentUser(),
+        User actor = userService.getCurrentUser();
+        tenantAccess.requireBranchAccess(actor,
                 branchRepository.findById(branchId).orElseThrow(() -> new Exception("Branch not found")));
         return orderRepository.findTop5ByBranchIdOrderByCreatedAtDesc(branchId).stream()
+                .filter(order -> actor.getRole() != UserRole.ROLE_BRANCH_CASHIER
+                        || (order.getCashier() != null
+                        && java.util.Objects.equals(actor.getId(), order.getCashier().getId())))
                 .map(OrderMapper::toDTO)
                 .collect(Collectors.toList());
     }

@@ -1,8 +1,12 @@
 package pl.com.possystem.service.impl;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.cglib.core.Local;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+import pl.com.possystem.domain.UserRole;
 import pl.com.possystem.entity.Branch;
 import pl.com.possystem.entity.Order;
 import pl.com.possystem.entity.Refund;
@@ -44,6 +48,9 @@ public class RefundServiceImpl  implements RefundService {
 
         Branch branch = order.getBranch();
         tenantAccess.requireBranchAccess(cashier, branch);
+        if (refundRepository.existsByOrderId(order.getId())) {
+            throw alreadyRefunded();
+        }
 
         Refund createdRefund = Refund.builder()
                 .order(order)
@@ -55,8 +62,31 @@ public class RefundServiceImpl  implements RefundService {
                 .build();
 
 
-        Refund savedRefund = refundRepository.save(createdRefund);
-        return RefundMapper.toDTO(savedRefund);
+        try {
+            Refund savedRefund = refundRepository.saveAndFlush(createdRefund);
+            return RefundMapper.toDTO(savedRefund);
+        } catch (DataIntegrityViolationException exception) {
+            if (isOrderRefundConstraintViolation(exception)) {
+                throw alreadyRefunded();
+            }
+            throw exception;
+        }
+    }
+
+    private ResponseStatusException alreadyRefunded() {
+        return new ResponseStatusException(HttpStatus.CONFLICT, "This order has already been refunded");
+    }
+
+    private boolean isOrderRefundConstraintViolation(Throwable exception) {
+        Throwable cause = exception;
+        while (cause != null) {
+            if (cause instanceof ConstraintViolationException violation
+                    && "uk_refunds_order_id".equalsIgnoreCase(violation.getConstraintName())) {
+                return true;
+            }
+            cause = cause.getCause();
+        }
+        return false;
     }
 
     @Override
@@ -71,7 +101,11 @@ public class RefundServiceImpl  implements RefundService {
                   throw new org.springframework.security.access.AccessDeniedException(
                           "The current user is not assigned to a branch");
               }
-              refunds = refundRepository.findByBranchId(actor.getBranch().getId());
+              refunds = refundRepository.findByBranchId(actor.getBranch().getId()).stream()
+                      .filter(refund -> actor.getRole() == UserRole.ROLE_BRANCH_MANAGER
+                              || (refund.getCashier() != null
+                              && java.util.Objects.equals(actor.getId(), refund.getCashier().getId())))
+                      .collect(java.util.stream.Collectors.toList());
           } else {
               refunds = refundRepository.findByBranchStoreId(
                       tenantAccess.requireActorStore(actor).getId());
@@ -98,8 +132,12 @@ public class RefundServiceImpl  implements RefundService {
     public List<RefundDTO> getRefundByShiftReport(Long shiftReportId) throws Exception {
         ShiftReport report = shiftReportRepository.findById(shiftReportId)
                 .orElseThrow(() -> new Exception("Shift report not found"));
-        tenantAccess.requireBranchAccess(userService.getCurrentUser(), report.getBranch());
+        User actor = userService.getCurrentUser();
+        tenantAccess.requireBranchAccess(actor, report.getBranch());
         return refundRepository.findByShiftReportId(shiftReportId).stream()
+                .filter(refund -> actor.getRole() != UserRole.ROLE_BRANCH_CASHIER
+                        || (refund.getCashier() != null
+                        && java.util.Objects.equals(actor.getId(), refund.getCashier().getId())))
                 .map(RefundMapper::toDTO).collect(Collectors.toList());
     }
 
@@ -116,8 +154,12 @@ public class RefundServiceImpl  implements RefundService {
     public List<RefundDTO> getRefundByBranch(Long branchId) throws Exception {
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new Exception("Branch not found"));
-        tenantAccess.requireBranchAccess(userService.getCurrentUser(), branch);
+        User actor = userService.getCurrentUser();
+        tenantAccess.requireBranchAccess(actor, branch);
         return refundRepository.findByBranchId(branchId).stream()
+                .filter(refund -> actor.getRole() != UserRole.ROLE_BRANCH_CASHIER
+                        || (refund.getCashier() != null
+                        && java.util.Objects.equals(actor.getId(), refund.getCashier().getId())))
                 .map(RefundMapper::toDTO).collect(Collectors.toList());
     }
 
@@ -125,7 +167,14 @@ public class RefundServiceImpl  implements RefundService {
     public RefundDTO getRefundById(Long refundId) throws Exception {
         Refund refund = refundRepository.findById(refundId)
                 .orElseThrow(() -> new Exception("Refund not found"));
-        tenantAccess.requireBranchAccess(userService.getCurrentUser(), refund.getBranch());
+        User actor = userService.getCurrentUser();
+        tenantAccess.requireBranchAccess(actor, refund.getBranch());
+        if (actor.getRole() == UserRole.ROLE_BRANCH_CASHIER
+                && (refund.getCashier() == null
+                || !java.util.Objects.equals(actor.getId(), refund.getCashier().getId()))) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Cashiers can only view their own refunds");
+        }
         return RefundMapper.toDTO(refund);
     }
 
