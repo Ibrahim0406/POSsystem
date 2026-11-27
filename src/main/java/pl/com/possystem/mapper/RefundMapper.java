@@ -13,7 +13,7 @@ public class RefundMapper {
                 .amount(refund.getAmount())
                 .cashierName(refund.getCashier().getFullName())
                 .branchId(refund.getBranch().getId())
-                .shiftReportId(refund.getShiftReport().getId())
+                .shiftReportId(refund.getShiftReport() == null ? null : refund.getShiftReport().getId())
                 .createdAt(refund.getCreatedAt())
                 .build();
     }
