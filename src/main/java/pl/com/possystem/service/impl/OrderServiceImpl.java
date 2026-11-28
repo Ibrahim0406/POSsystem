@@ -3,8 +3,11 @@ package pl.com.possystem.service.impl;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 import pl.com.possystem.domain.OrderStatus;
 import pl.com.possystem.domain.PaymentType;
 import pl.com.possystem.domain.UserRole;
@@ -16,6 +19,7 @@ import pl.com.possystem.repository.InventoryRepository;
 import pl.com.possystem.repository.ProductRepository;
 import pl.com.possystem.repository.BranchRepository;
 import pl.com.possystem.repository.CustomerRepository;
+import pl.com.possystem.repository.ShiftReportRepository;
 import pl.com.possystem.repository.UserRepository;
 import pl.com.possystem.service.OrderService;
 import pl.com.possystem.service.TenantAccess;
@@ -44,6 +48,7 @@ public class OrderServiceImpl implements OrderService {
     private final CustomerRepository customerRepository;
     private final UserRepository userRepository;
     private final TenantAccess tenantAccess;
+    private final ShiftReportRepository shiftReportRepository;
 
 
     @Override
@@ -62,6 +67,18 @@ public class OrderServiceImpl implements OrderService {
             throw new Exception("Cashier does not belong to any branch.");
         }
         tenantAccess.requireBranchAccess(cashier, branch);
+        if (cashier.getRole() == UserRole.ROLE_BRANCH_CASHIER) {
+            ShiftReport activeShift = shiftReportRepository
+                    .findActiveByCashierForUpdate(cashier, PageRequest.of(0, 1))
+                    .stream()
+                    .findFirst()
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.CONFLICT, "An active shift is required to create an order"));
+            if (activeShift.getBranch() == null
+                    || !branch.getId().equals(activeShift.getBranch().getId())) {
+                throw new IllegalStateException("The active shift does not belong to the cashier's branch");
+            }
+        }
 
         Map<Long, Integer> requestedQuantities = new TreeMap<>();
         for (var itemDTO : orderDTO.getItems()) {

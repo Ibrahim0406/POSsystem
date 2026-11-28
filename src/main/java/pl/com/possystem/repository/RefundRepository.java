@@ -11,11 +11,11 @@ public interface RefundRepository extends JpaRepository<Refund, Long> {
 
     boolean existsByOrderId(Long orderId);
 
+    List<Refund> findByShiftReportId(Long id);
+
     List<Refund> findByCashierIdAndCreatedAtBetween(Long cashierId, LocalDateTime startDate, LocalDateTime endDate);
 
     List<Refund> findByCashierId(Long id);
-
-    List<Refund> findByShiftReportId(Long id);
 
     List<Refund> findByBranchId(Long id);
 

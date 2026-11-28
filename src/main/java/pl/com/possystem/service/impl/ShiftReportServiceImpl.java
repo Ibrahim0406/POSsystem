@@ -4,7 +4,11 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.security.access.AccessDeniedException;
 import pl.com.possystem.domain.UserRole;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 import pl.com.possystem.domain.PaymentType;
 import pl.com.possystem.entity.*;
 import pl.com.possystem.mapper.ShiftReportMapper;
@@ -68,6 +72,7 @@ public class ShiftReportServiceImpl implements ShiftReportService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public ShiftReportDTO endShift(Long shiftReportId, LocalDateTime shiftEnd) throws Exception {
 
         User user = userService.getCurrentUser();
@@ -75,15 +80,16 @@ public class ShiftReportServiceImpl implements ShiftReportService {
             throw new AccessDeniedException("Only branch cashiers can end their own shift");
         }
 
-        ShiftReport shiftReport = shiftReportRepository.findTopByCashierAndShiftEndIsNullOrderByShiftStartDesc(user)
-                .orElseThrow(() -> new Exception("Shift report not found"));
+        ShiftReport shiftReport = getActiveShiftForUpdate(user);
         tenantAccess.requireBranchAccess(user, shiftReport.getBranch());
 
-        shiftReport.setShiftEnd(shiftEnd);
+        LocalDateTime effectiveShiftEnd = shiftEnd == null ? LocalDateTime.now() : shiftEnd;
+        if (!effectiveShiftEnd.isAfter(shiftReport.getShiftStart())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Shift end must be after shift start");
+        }
+        shiftReport.setShiftEnd(effectiveShiftEnd);
 
-        List<Refund> refunds = refundRepository.findByCashierIdAndCreatedAtBetween(
-                user.getId() ,shiftReport.getShiftStart(), shiftReport.getShiftEnd()
-        );
+        List<Refund> refunds = findRefundsForShift(shiftReport, effectiveShiftEnd);
 
         BigDecimal totalRefunds = refunds.stream()
                 .map(Refund::getAmount)
@@ -307,8 +313,7 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         List<Order> orders = orderRepository.findByCashierAndCreatedAtBetween(
                 cashier, shiftReport.getShiftStart(), now);
 
-        List<Refund> refunds = refundRepository.findByCashierIdAndCreatedAtBetween(
-                cashier.getId(), shiftReport.getShiftStart(), now);
+        List<Refund> refunds = findRefundsForShift(shiftReport, now);
 
         BigDecimal totalRefunds = refunds.stream()
                 .map(Refund::getAmount)
@@ -329,5 +334,24 @@ public class ShiftReportServiceImpl implements ShiftReportService {
         shiftReport.setRefunds(refunds);
 
         return ShiftReportMapper.toDTO(shiftReportRepository.save(shiftReport));
+    }
+
+    private ShiftReport getActiveShiftForUpdate(User cashier) {
+        return shiftReportRepository.findActiveByCashierForUpdate(cashier, PageRequest.of(0, 1))
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.CONFLICT, "There is no active shift to end"));
+    }
+
+    private List<Refund> findRefundsForShift(ShiftReport shiftReport, LocalDateTime end) {
+        List<Refund> refunds = new ArrayList<>(
+                refundRepository.findByShiftReportId(shiftReport.getId()));
+        refundRepository.findByCashierIdAndCreatedAtBetween(
+                        shiftReport.getCashier().getId(), shiftReport.getShiftStart(), end)
+                .stream()
+                .filter(refund -> refund.getShiftReport() == null)
+                .forEach(refunds::add);
+        return refunds;
     }
 }

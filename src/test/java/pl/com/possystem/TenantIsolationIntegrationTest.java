@@ -49,12 +49,15 @@ class TenantIsolationIntegrationTest {
     private Branch branchA;
     private Branch branchB;
     private Category categoryB;
+    private Product productA;
     private Product productB;
+    private Inventory inventoryA;
     private Inventory inventoryB;
     private Customer customerA;
     private Customer customerB;
     private User cashierB;
     private Order orderB;
+    private Order orderA;
     private Refund refundB;
     private ShiftReport shiftReportB;
     private String tokenA;
@@ -76,8 +79,10 @@ class TenantIsolationIntegrationTest {
                 Category.builder().name("category-a-" + suffix).store(storeA).build());
         categoryB = categoryRepository.saveAndFlush(
                 Category.builder().name("category-b-" + suffix).store(storeB).build());
-        productRepository.saveAndFlush(product("sku-a-" + suffix, storeA, categoryA));
+        productA = productRepository.saveAndFlush(product("sku-a-" + suffix, storeA, categoryA));
         productB = productRepository.saveAndFlush(product("sku-b-" + suffix, storeB, categoryB));
+        inventoryA = inventoryRepository.saveAndFlush(
+                Inventory.builder().branch(branchA).product(productA).quantity(10).build());
         inventoryB = inventoryRepository.saveAndFlush(
                 Inventory.builder().branch(branchB).product(productB).quantity(10).build());
         cashierB = saveUser("cashier-b-" + suffix, UserRole.ROLE_BRANCH_CASHIER);
@@ -98,6 +103,7 @@ class TenantIsolationIntegrationTest {
                 .branch(branchB)
                 .cashier(cashierB)
                 .customer(customerB)
+                .totalAmount(new BigDecimal("10.00"))
                 .items(List.of())
                 .build());
         refundB = refundRepository.saveAndFlush(Refund.builder()
@@ -130,6 +136,13 @@ class TenantIsolationIntegrationTest {
         cashierA.setBranch(branchA);
         cashierA = userRepository.saveAndFlush(cashierA);
         tokenCashierA = tokenFor(cashierA);
+        orderA = orderRepository.saveAndFlush(Order.builder()
+                .branch(branchA)
+                .cashier(cashierA)
+                .customer(customerA)
+                .totalAmount(new BigDecimal("9.00"))
+                .items(List.of())
+                .build());
     }
 
     @Test
@@ -540,6 +553,71 @@ class TenantIsolationIntegrationTest {
                         .content("""
                                 {"orderId":%d,"amount":1,"reason":"duplicate attempt"}
                                 """.formatted(orderB.getId())))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void cashierTransactionsRequireAnActiveShiftAndRefundsRespectOrderTotal() throws Exception {
+        mockMvc.perform(post("/api/orders/create")
+                        .header("Authorization", bearer(tokenCashierA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"items":[{"productId":%d,"quantity":1}],"paymentType":"CASH"}
+                                """.formatted(productA.getId())))
+                .andExpect(status().isConflict());
+        org.junit.jupiter.api.Assertions.assertEquals(10, inventoryA.getQuantity());
+
+        mockMvc.perform(post("/api/refunds/create")
+                        .header("Authorization", bearer(tokenCashierA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"orderId":%d,"amount":1,"reason":"no active shift"}
+                                """.formatted(orderA.getId())))
+                .andExpect(status().isConflict());
+
+        mockMvc.perform(post("/api/shift-reports/start")
+                        .header("Authorization", bearer(tokenCashierA)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/orders/create")
+                        .header("Authorization", bearer(tokenCashierA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"items":[{"productId":%d,"quantity":1}],"paymentType":"CASH"}
+                                """.formatted(productA.getId())))
+                .andExpect(status().isOk());
+        org.junit.jupiter.api.Assertions.assertEquals(9, inventoryA.getQuantity());
+
+        mockMvc.perform(post("/api/refunds/create")
+                        .header("Authorization", bearer(tokenCashierA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"orderId":%d,"amount":10,"reason":"too much"}
+                                """.formatted(orderA.getId())))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(post("/api/refunds/create")
+                        .header("Authorization", bearer(tokenCashierA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"orderId":%d,"amount":9,"reason":"valid"}
+                                """.formatted(orderA.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.shiftReportId").isNumber());
+
+        mockMvc.perform(post("/api/refunds/create")
+                        .header("Authorization", bearer(tokenCashierA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"orderId":%d,"amount":9,"reason":"duplicate"}
+                                """.formatted(orderA.getId())))
+                .andExpect(status().isConflict());
+
+        mockMvc.perform(patch("/api/shift-reports/end")
+                        .header("Authorization", bearer(tokenCashierA)))
+                .andExpect(status().isOk());
+        mockMvc.perform(patch("/api/shift-reports/end")
+                        .header("Authorization", bearer(tokenCashierA)))
                 .andExpect(status().isConflict());
     }
 

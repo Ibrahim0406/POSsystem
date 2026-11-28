@@ -11,6 +11,7 @@ import pl.com.possystem.repository.OrderRepository;
 import pl.com.possystem.repository.ProductRepository;
 import pl.com.possystem.repository.BranchRepository;
 import pl.com.possystem.repository.CustomerRepository;
+import pl.com.possystem.repository.ShiftReportRepository;
 import pl.com.possystem.repository.UserRepository;
 import pl.com.possystem.service.UserService;
 import pl.com.possystem.service.TenantAccess;
@@ -18,6 +19,7 @@ import pl.com.possystem.service.TenantAccess;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Pageable;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -43,9 +45,11 @@ class OrderServiceImplTest {
         BranchRepository branchRepository = mock(BranchRepository.class);
         CustomerRepository customerRepository = mock(CustomerRepository.class);
         UserRepository userRepository = mock(UserRepository.class);
+        ShiftReportRepository shiftReportRepository = mock(ShiftReportRepository.class);
         orderService = new OrderServiceImpl(
                 orderRepository, userService, productRepository, inventoryRepository,
-                branchRepository, customerRepository, userRepository, mock(TenantAccess.class)
+                branchRepository, customerRepository, userRepository, mock(TenantAccess.class),
+                shiftReportRepository
         );
 
         Store store = new Store();
@@ -59,6 +63,11 @@ class OrderServiceImplTest {
         cashier.setId(30L);
         cashier.setBranch(branch);
         cashier.setRole(UserRole.ROLE_BRANCH_CASHIER);
+        ShiftReport activeShift = new ShiftReport();
+        activeShift.setBranch(branch);
+        activeShift.setCashier(cashier);
+        when(shiftReportRepository.findActiveByCashierForUpdate(eq(cashier), any(Pageable.class)))
+                .thenReturn(List.of(activeShift));
 
         Category category = new Category();
         category.setName("Food");
@@ -108,6 +117,21 @@ class OrderServiceImplTest {
         assertThrows(IllegalArgumentException.class, () -> orderService.createOrder(request));
 
         verifyNoInteractions(productRepository, inventoryRepository, orderRepository);
+    }
+
+    @Test
+    void rejectsOrderWithoutAnActiveShift() {
+        OrderDTO request = OrderDTO.builder().items(List.of(item(1))).build();
+        ShiftReportRepository shiftReportRepository = mock(ShiftReportRepository.class);
+        OrderServiceImpl serviceWithoutShift = new OrderServiceImpl(
+                orderRepository, userService, productRepository, inventoryRepository,
+                mock(BranchRepository.class), mock(CustomerRepository.class), mock(UserRepository.class),
+                mock(TenantAccess.class), shiftReportRepository
+        );
+
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> serviceWithoutShift.createOrder(request));
+        verifyNoInteractions(inventoryRepository, orderRepository);
     }
 
     @Test
