@@ -2,9 +2,11 @@ package pl.com.possystem.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import pl.com.possystem.domain.UserRole;
 import pl.com.possystem.entity.Branch;
@@ -41,6 +43,7 @@ public class RefundServiceImpl  implements RefundService {
     private final TenantAccess tenantAccess;
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public RefundDTO createRefund(RefundDTO refund) throws Exception {
         User cashier  = userService.getCurrentUser();
 
@@ -51,9 +54,30 @@ public class RefundServiceImpl  implements RefundService {
         if (refundRepository.existsByOrderId(order.getId())) {
             throw alreadyRefunded();
         }
+        if (refund.getAmount() == null || refund.getAmount().signum() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Refund amount must be greater than zero");
+        }
+        if (order.getTotalAmount() == null || refund.getAmount().compareTo(order.getTotalAmount()) > 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Refund amount cannot exceed the order total");
+        }
+
+        ShiftReport activeShift = null;
+        if (cashier.getRole() == UserRole.ROLE_BRANCH_CASHIER) {
+            activeShift = shiftReportRepository.findActiveByCashierForUpdate(cashier, PageRequest.of(0, 1))
+                    .stream()
+                    .findFirst()
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.CONFLICT, "An active shift is required to create a refund"));
+            if (activeShift.getBranch() == null
+                    || !branch.getId().equals(activeShift.getBranch().getId())) {
+                throw new IllegalStateException("The active shift does not belong to the cashier's branch");
+            }
+        }
 
         Refund createdRefund = Refund.builder()
                 .order(order)
+                .shiftReport(activeShift)
                 .cashier(cashier)
                 .branch(branch)
                 .reason(refund.getReason())
